@@ -52,7 +52,7 @@ def get_node(
 def clear_cache(host: str | None = None) -> None:
     """Remove cached node(s) so the next call creates a fresh connection."""
     with _lock:
-        if host:
+        if host is not None:
             _cache.pop(host, None)
         else:
             _cache.clear()
@@ -216,10 +216,15 @@ def check_health(node: pyeapi.client.Node) -> dict[str, Any]:
         info["version"] = facts["version"]
         uptime_s = int(facts["uptime_seconds"])
         uptime_d, rem = divmod(uptime_s, 86400)
-        uptime_h = rem // 3600
-        info["uptime"] = f"{uptime_d}d {uptime_h}h"
+        uptime_h, rem2 = divmod(rem, 3600)
+        uptime_m = rem2 // 60
+        if uptime_d == 0 and uptime_h == 0:
+            info["uptime"] = f"{uptime_m}m"
+        else:
+            info["uptime"] = f"{uptime_d}d {uptime_h}h"
         if uptime_d == 0:
-            anomalies.append(f"WARNING: uptime {uptime_h}h — recent reboot?")
+            display = f"{uptime_m}m" if uptime_h == 0 else f"{uptime_h}h"
+            anomalies.append(f"WARNING: uptime {display} — recent reboot?")
         total_kb = facts.get("memory_total_kb", 0)
         free_kb = facts.get("memory_free_kb", 0)
         if total_kb > 0:
@@ -240,23 +245,15 @@ def check_health(node: pyeapi.client.Node) -> dict[str, Any]:
     try:
         env = _get_environment_text(node)
         if env:
-            if "System temperature status is: Ok" not in env:
-                status_line = next(
-                    (l.strip() for l in env.splitlines() if l.startswith("System temperature status")),
-                    "temperature status unknown",
-                )
-                anomalies.append(f"CRITICAL: {status_line}")
-            if "System cooling status is: Ok" not in env:
-                status_line = next(
-                    (l.strip() for l in env.splitlines() if l.startswith("System cooling status")),
-                    "cooling status unknown",
-                )
-                anomalies.append(f"CRITICAL: {status_line}")
+            for _prefix in ("System temperature status", "System cooling status"):
+                _sline = next((l.strip() for l in env.splitlines() if l.startswith(_prefix)), None)
+                if _sline is not None and "Ok" not in _sline:
+                    anomalies.append(f"CRITICAL: {_sline}")
             for line in env.splitlines():
                 stripped = line.strip()
-                # Fan/PSU failure lines start with a digit (sensor/PSU index) or "PowerSupply"
+                # Fan/PSU failure: lines starting with a digit, PowerSupply, or Fan (FanTray, Fan1/1…)
                 if stripped and " Fail" in stripped:
-                    if stripped[0].isdigit() or stripped.startswith("PowerSupply"):
+                    if stripped[0].isdigit() or stripped.startswith(("PowerSupply", "Fan")):
                         anomalies.append(f"CRITICAL: hardware Fail: {stripped}")
         else:
             anomalies.append("WARNING: environment status unavailable")

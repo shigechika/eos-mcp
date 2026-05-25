@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eos-mcp"
-dynamic = ["version"]
+version = "0.1.0"
 description = "MCP server for Arista EOS device operations via eAPI"
 readme = "README.md"
 license = "Apache-2.0"
@@ -47,9 +47,6 @@ Issues = "https://github.com/shigechika/eos-mcp/issues"
 
 [tool.setuptools]
 packages = ["eos_mcp"]
-
-[tool.setuptools.dynamic]
-version = {attr = "eos_mcp.__version__"}
 
 [tool.ruff]
 target-version = "py310"

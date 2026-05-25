@@ -73,24 +73,24 @@ def get_device_facts(hostname: str, config_path: str = "") -> str:
     try:
         node = _connect(hostname, _config_path(config_path))
         f = eapi.get_device_facts(node)
+        uptime_h = int(f["uptime_seconds"]) // 3600
+        uptime_d, uptime_h = divmod(uptime_h, 24)
+        fqdn_line = f"\nfqdn:              {f['fqdn']}" if f["fqdn"] != f["hostname"] else ""
+        return (
+            f"hostname:          {f['hostname']}{fqdn_line}\n"
+            f"model:             {f['model']}\n"
+            f"serial:            {f['serial']}\n"
+            f"EOS version:       {f['version']}\n"
+            f"hardware revision: {f['hardware_revision']}\n"
+            f"uptime:            {uptime_d}d {uptime_h}h\n"
+            f"memory total:      {f['memory_total_kb'] // 1024} MB\n"
+            f"memory free:       {f['memory_free_kb'] // 1024} MB\n"
+            f"MAC:               {f['mac']}\n"
+            f"architecture:      {f['architecture']}"
+        )
     except Exception as e:
         eapi.clear_cache(hostname)
         return f"Error ({hostname}): {e}"
-    uptime_h = int(f["uptime_seconds"]) // 3600
-    uptime_d, uptime_h = divmod(uptime_h, 24)
-    fqdn_line = f"\nfqdn:              {f['fqdn']}" if f["fqdn"] != f["hostname"] else ""
-    return (
-        f"hostname:          {f['hostname']}{fqdn_line}\n"
-        f"model:             {f['model']}\n"
-        f"serial:            {f['serial']}\n"
-        f"EOS version:       {f['version']}\n"
-        f"hardware revision: {f['hardware_revision']}\n"
-        f"uptime:            {uptime_d}d {uptime_h}h\n"
-        f"memory total:      {f['memory_total_kb'] // 1024} MB\n"
-        f"memory free:       {f['memory_free_kb'] // 1024} MB\n"
-        f"MAC:               {f['mac']}\n"
-        f"architecture:      {f['architecture']}"
-    )
 
 
 @mcp.tool()
@@ -351,7 +351,7 @@ def daily_brief(
         return f"Error: {e}"
 
     targets = _resolve_hosts(cfg, hostnames, tags)
-    if not targets:
+    if not targets and hostnames is None and tags is None:
         targets = cfg_mod.get_hosts(cfg, None)
     if not targets:
         return "No hosts resolved."
