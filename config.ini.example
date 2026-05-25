@@ -1,0 +1,26 @@
+# eos-mcp configuration example
+# Copy to ~/.config/eos-mcp/config.ini and fill in credentials.
+#
+# Discovery order:
+#   --config_path arg > EOS_MCP_CONFIG env var > ./config.ini > ~/.config/eos-mcp/config.ini
+
+[DEFAULT]
+username = admin
+password =
+transport = https
+verify = false
+
+# Tags: comma-separated labels for grouping (used by *_batch tools)
+# Common conventions: main/backup (MLAG role), site name, device role
+
+[switch1.example.com]
+tags = main,dc1
+
+[switch2.example.com]
+tags = main,dc1
+
+[switch3.example.com]
+tags = backup,dc1,mlag
+
+[switch4.example.com]
+tags = backup,dc1,mlag

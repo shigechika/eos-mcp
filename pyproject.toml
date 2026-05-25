@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eos-mcp"
+dynamic = ["version"]
+description = "MCP server for Arista EOS device operations via eAPI"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [
+    {name = "AIKAWA Shigechika"},
+]
+keywords = ["arista", "eos", "eapi", "mcp", "model-context-protocol", "network", "automation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Systems Administration",
+]
+dependencies = [
+    "mcp>=1.0",
+    "pyeapi",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
+
+[project.scripts]
+eos-mcp = "eos_mcp.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/shigechika/eos-mcp"
+Repository = "https://github.com/shigechika/eos-mcp"
+Issues = "https://github.com/shigechika/eos-mcp/issues"
+
+[tool.setuptools]
+packages = ["eos_mcp"]
+
+[tool.setuptools.dynamic]
+version = {attr = "eos_mcp.__version__"}
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
