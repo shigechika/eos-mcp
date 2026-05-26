@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.shigechika/eos-mcp -->
+
 # eos-mcp
 
 MCP server for Arista EOS device operations via eAPI.
