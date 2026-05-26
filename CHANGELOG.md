@@ -5,6 +5,23 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/shigechika/eos-mcp/compare/v0.1.0...v0.2.0) (2026-05-26)
+
+
+### Features
+
+* initial release v0.1.0 ([f61a624](https://github.com/shigechika/eos-mcp/commit/f61a6245b1ea29be403ee4acd8ee0af54999053c))
+
+
+### Bug Fixes
+
+* address code review findings and add release automation ([4c8ebac](https://github.com/shigechika/eos-mcp/commit/4c8ebac18ed2abddde708149842c84bf11ee561e))
+
+
+### Reverts
+
+* server.json version to 0.0.0 (managed by release workflow) ([e7178b9](https://github.com/shigechika/eos-mcp/commit/e7178b90099b09b374997cbefc7ef3daa539cc77))
+
 ## [Unreleased]
 
 ## [0.1.0] - 2026-05-25
