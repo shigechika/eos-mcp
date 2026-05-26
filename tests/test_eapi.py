@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 import eos_mcp.eapi as eapi_mod
 from eos_mcp.eapi import (
     _get_environment_text,
@@ -40,7 +38,7 @@ def _run_health(
         "memory_total_kb": 4_000_000,
         "memory_free_kb": 2_000_000,  # 50% — no memory warning
     }
-    if facts_override:
+    if facts_override is not None:
         facts.update(facts_override)
 
     def _show(_node, cmd):
@@ -290,6 +288,17 @@ def test_check_health_mlag_negotiation_not_connected_is_critical():
     )
     result = _run_health(mlag_text=mlag)
     assert any("CRITICAL: MLAG negotiation=not-connected" in a for a in result["anomalies"])
+
+
+# ---------------------------------------------------------------------------
+# check_health — environment unavailable
+# ---------------------------------------------------------------------------
+
+
+def test_check_health_environment_unavailable_warns():
+    """When _get_environment_text returns '', check_health must warn."""
+    result = _run_health(env_text="")
+    assert any("environment status unavailable" in a for a in result["anomalies"])
 
 
 # ---------------------------------------------------------------------------
