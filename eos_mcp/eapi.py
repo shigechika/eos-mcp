@@ -220,6 +220,8 @@ def check_health(node: pyeapi.client.Node) -> dict[str, Any]:
         uptime_m = rem2 // 60
         if uptime_d == 0 and uptime_h == 0:
             info["uptime"] = f"{uptime_m}m"
+        elif uptime_d == 0:
+            info["uptime"] = f"{uptime_h}h"
         else:
             info["uptime"] = f"{uptime_d}d {uptime_h}h"
         if uptime_d == 0:
