@@ -8,7 +8,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from eos_mcp import config as cfg_mod
-from eos_mcp.server import _resolve_hosts, get_device_facts, get_device_facts_batch
+from eos_mcp.server import (
+    _resolve_hosts,
+    get_device_facts,
+    get_device_facts_batch,
+    run_commands_batch,
+)
 
 
 @pytest.fixture()
@@ -164,3 +169,41 @@ def test_get_device_facts_batch_uptime_over_1d_shows_compact():
 def test_get_device_facts_batch_uptime_no_leading_zero_days():
     result = _batch_result(3 * 3600)
     assert "0d" not in result
+
+
+# ---------------------------------------------------------------------------
+# run_commands_batch
+# ---------------------------------------------------------------------------
+
+
+def _run_cmds_batch(commands: list[str], hosts: list[str]) -> str:
+    """Call run_commands_batch with mocked eapi."""
+    fake_output = "\n".join(f"--- {cmd} ---\noutput of {cmd}" for cmd in commands)
+    with (
+        patch("eos_mcp.server._connect", return_value=MagicMock()),
+        patch("eos_mcp.eapi.run_shows", return_value=fake_output),
+        patch("eos_mcp.server.cfg_mod.load", return_value=(MagicMock(), "/fake.ini")),
+        patch("eos_mcp.server._resolve_hosts", return_value=hosts),
+    ):
+        return run_commands_batch(commands=commands, hostnames=hosts)
+
+
+def test_run_commands_batch_labels_each_host():
+    result = _run_cmds_batch(["show version"], ["sw1.example.com", "sw2.example.com"])
+    assert "# sw1.example.com" in result
+    assert "# sw2.example.com" in result
+
+
+def test_run_commands_batch_includes_command_output():
+    result = _run_cmds_batch(["show version", "show mlag"], ["sw1.example.com"])
+    assert "show version" in result
+    assert "show mlag" in result
+
+
+def test_run_commands_batch_no_hosts_returns_error():
+    with (
+        patch("eos_mcp.server.cfg_mod.load", return_value=(MagicMock(), "/fake.ini")),
+        patch("eos_mcp.server._resolve_hosts", return_value=[]),
+    ):
+        result = run_commands_batch(commands=["show version"])
+    assert "No hosts resolved" in result
