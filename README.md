@@ -62,6 +62,7 @@ eos-mcp
 | `run_command` | Run a single enable-mode command on one device |
 | `run_commands` | Run multiple enable-mode commands on one device |
 | `run_command_batch` | Run an enable-mode command on multiple devices in parallel |
+| `run_commands_batch` | Run multiple enable-mode commands on multiple devices in parallel |
 | `get_config` | Retrieve running-config |
 | `get_config_diff` | Show config diff vs rollback checkpoint |
 | `list_config_sessions` | List configure sessions and their state |

@@ -73,8 +73,16 @@ def get_device_facts(hostname: str, config_path: str = "") -> str:
     try:
         node = _connect(hostname, _config_path(config_path))
         f = eapi.get_device_facts(node)
-        uptime_h = int(f["uptime_seconds"]) // 3600
-        uptime_d, uptime_h = divmod(uptime_h, 24)
+        uptime_s = int(f["uptime_seconds"])
+        uptime_d, rem = divmod(uptime_s, 86400)
+        uptime_h, rem2 = divmod(rem, 3600)
+        uptime_m = rem2 // 60
+        if uptime_d == 0 and uptime_h == 0:
+            uptime_str = f"{uptime_m}m"
+        elif uptime_d == 0:
+            uptime_str = f"{uptime_h}h"
+        else:
+            uptime_str = f"{uptime_d}d {uptime_h}h"
         fqdn_line = f"\nfqdn:              {f['fqdn']}" if f["fqdn"] != f["hostname"] else ""
         return (
             f"hostname:          {f['hostname']}{fqdn_line}\n"
@@ -82,7 +90,7 @@ def get_device_facts(hostname: str, config_path: str = "") -> str:
             f"serial:            {f['serial']}\n"
             f"EOS version:       {f['version']}\n"
             f"hardware revision: {f['hardware_revision']}\n"
-            f"uptime:            {uptime_d}d {uptime_h}h\n"
+            f"uptime:            {uptime_str}\n"
             f"memory total:      {f['memory_total_kb'] // 1024} MB\n"
             f"memory free:       {f['memory_free_kb'] // 1024} MB\n"
             f"MAC:               {f['mac']}\n"
@@ -116,9 +124,17 @@ def get_device_facts_batch(
         try:
             node = _connect(host, cp)
             f = eapi.get_device_facts(node)
-            uptime_h = int(f["uptime_seconds"]) // 3600
-            uptime_d, uptime_h = divmod(uptime_h, 24)
-            return host, f"{f['model']}  EOS {f['version']}  serial={f['serial']}  up={uptime_d}d{uptime_h}h"
+            uptime_s = int(f["uptime_seconds"])
+            uptime_d, rem = divmod(uptime_s, 86400)
+            uptime_h, rem2 = divmod(rem, 3600)
+            uptime_m = rem2 // 60
+            if uptime_d == 0 and uptime_h == 0:
+                up_str = f"{uptime_m}m"
+            elif uptime_d == 0:
+                up_str = f"{uptime_h}h"
+            else:
+                up_str = f"{uptime_d}d{uptime_h}h"
+            return host, f"{f['model']}  EOS {f['version']}  serial={f['serial']}  up={up_str}"
         except Exception as exc:
             eapi.clear_cache(host)
             return host, f"Error: {exc}"
@@ -228,6 +244,51 @@ def run_command_batch(
         try:
             node = _connect(host, cp)
             return host, eapi.run_show(node, command)
+        except Exception as exc:
+            eapi.clear_cache(host)
+            return host, f"Error: {exc}"
+
+    results: dict[str, str] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+        for host, output in pool.map(_run_one, targets):
+            results[host] = output
+
+    lines = []
+    for host in targets:
+        lines.append(f"# {host}")
+        lines.append(results.get(host, ""))
+        lines.append("")
+    return "\n".join(lines)
+
+
+@mcp.tool()
+def run_commands_batch(
+    commands: list[str],
+    hostnames: list[str] | None = None,
+    tags: list[str] | None = None,
+    max_workers: int = 5,
+    config_path: str = "",
+) -> str:
+    """Run multiple enable-mode commands on multiple EOS devices in parallel.
+
+    Specify targets via 'hostnames', 'tags', or both.
+    Each device's output is labelled by hostname and command.
+    """
+    try:
+        cfg, _ = cfg_mod.load(_config_path(config_path))
+    except FileNotFoundError as e:
+        return f"Error: {e}"
+
+    targets = _resolve_hosts(cfg, hostnames, tags)
+    if not targets:
+        return "No hosts resolved (check hostnames/tags)."
+
+    cp = _config_path(config_path)
+
+    def _run_one(host: str) -> tuple[str, str]:
+        try:
+            node = _connect(host, cp)
+            return host, eapi.run_shows(node, commands)
         except Exception as exc:
             eapi.clear_cache(host)
             return host, f"Error: {exc}"
