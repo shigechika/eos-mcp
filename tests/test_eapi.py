@@ -168,7 +168,7 @@ def test_check_health_uptime_sub_1h_warns_with_minutes():
 def test_check_health_uptime_sub_1d_warns_with_hours():
     result = _run_health(facts_override={"uptime_seconds": 3 * 3600 + 30 * 60})  # 3h30m
     assert any("WARNING: uptime 3h" in a for a in result["anomalies"])
-    assert result["info"]["uptime"] == "0d 3h"
+    assert result["info"]["uptime"] == "3h"
 
 
 def test_check_health_uptime_over_1d_no_warning():
