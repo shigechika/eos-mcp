@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1](https://github.com/shigechika/eos-mcp/compare/v0.2.0...v0.2.1) (2026-05-26)
+
+
+### Bug Fixes
+
+* uptime display and add run_commands_batch tool ([#7](https://github.com/shigechika/eos-mcp/issues/7)) ([2fe6626](https://github.com/shigechika/eos-mcp/commit/2fe6626f8c8642164947ecf15733c64d7d016967))
+
 ## [0.2.0](https://github.com/shigechika/eos-mcp/compare/v0.1.0...v0.2.0) (2026-05-26)
 
 
