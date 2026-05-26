@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2](https://github.com/shigechika/eos-mcp/compare/v0.2.1...v0.2.2) (2026-05-26)
+
+
+### Bug Fixes
+
+* add GH_REPO env to gh release upload ([#9](https://github.com/shigechika/eos-mcp/issues/9)) ([01c4bad](https://github.com/shigechika/eos-mcp/commit/01c4badf3dc0d1f01e53c873859260c71801e55f))
+
 ## [0.2.1](https://github.com/shigechika/eos-mcp/compare/v0.2.0...v0.2.1) (2026-05-26)
 
 
