@@ -1,8 +1,8 @@
 name: release
 
 on:
-  push:
-    tags: ["v*"]
+  release:
+    types: [published]
 
 jobs:
   test:
@@ -99,6 +99,6 @@ jobs:
         with:
           name: dist
           path: dist/
-      - run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes
+      - run: gh release upload "$GITHUB_REF_NAME" dist/*
         env:
           GH_TOKEN: ${{ github.token }}
