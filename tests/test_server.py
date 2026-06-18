@@ -267,7 +267,9 @@ def test_health_check_config_missing():
     assert result["device_count"] == 0
     assert result["tags"] == []
     assert "detail" in result
-    assert result["config_path"] == "/definitely/missing.ini"
+    # Compare as paths so the assertion holds on Windows too (str(Path) uses
+    # backslashes there); the production code stores str(find_config_path(...)).
+    assert Path(result["config_path"]) == Path("/definitely/missing.ini")
 
 
 def test_health_check_parse_error_degrades():
