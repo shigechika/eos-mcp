@@ -55,6 +55,7 @@ eos-mcp
 
 | Tool | Description |
 |---|---|
+| `health_check` | Report server version and config status (lightweight; does NOT connect to devices) |
 | `get_router_list` | List registered devices (optional tag filter) |
 | `get_device_facts` | Return structured facts for one device (model, serial, EOS version, uptime, memory) |
 | `get_device_facts_batch` | Return device facts for multiple devices in parallel |

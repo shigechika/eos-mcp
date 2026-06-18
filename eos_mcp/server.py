@@ -51,6 +51,65 @@ def _ensure_config(config_path: str) -> str | None:
 
 
 @mcp.tool()
+def health_check(config_path: str = "") -> dict:
+    """Report server version and configuration status (lightweight).
+
+    Call this at session start (or after a tool-call timeout) to confirm the MCP
+    is up, see which version is running, and verify the device inventory config
+    loads. Lightweight: it only reads and parses config.ini — it does NOT open
+    any eAPI/pyeapi connection to EOS devices, so it is safe to call against a
+    large fleet without touching the network.
+
+    Always returns the same keys: ``status`` (healthy / degraded / error),
+    ``service``, ``version``, ``config_path`` (resolved config.ini path),
+    ``device_count`` (EOS hosts in config), ``tags`` (sorted distinct tags), and
+    ``config`` (ok / error / missing). On a degraded or error result, ``detail``
+    carries the reason.
+    """
+    from eos_mcp import __version__
+
+    # Fixed shape: every key is present regardless of outcome, so callers can
+    # read it uniformly and rely on `status` to judge health.
+    result: dict = {
+        "status": "healthy",
+        "service": "eos-mcp",
+        "version": __version__,
+        "config_path": "",
+        "device_count": 0,
+        "tags": [],
+        "config": "ok",
+    }
+
+    # Resolve the path even if the load fails, so callers can see where we looked.
+    try:
+        result["config_path"] = str(cfg_mod.find_config_path(_config_path(config_path)))
+    except Exception:  # noqa: BLE001 — never let path resolution sink the check
+        pass
+
+    # Local-only: parse config.ini and count devices/tags. No device connection.
+    try:
+        cfg, path = cfg_mod.load(_config_path(config_path))
+        result["config_path"] = str(path)
+        hosts = cfg_mod.get_hosts(cfg, None)
+        result["device_count"] = len(hosts)
+        tags: set[str] = set()
+        for h in hosts:
+            raw = cfg.get(h, "tags", fallback="")
+            tags.update(t.strip() for t in raw.split(",") if t.strip())
+        result["tags"] = sorted(tags)
+    except FileNotFoundError as e:
+        result["status"] = "error"
+        result["config"] = "missing"
+        result["detail"] = str(e)
+    except Exception as e:  # noqa: BLE001 — surface parse errors, don't sink the check
+        result["status"] = "degraded"
+        result["config"] = "error"
+        result["detail"] = str(e)
+
+    return result
+
+
+@mcp.tool()
 def get_router_list(tags: list[str] | None = None, config_path: str = "") -> str:
     """List EOS devices registered in config, optionally filtered by tags."""
     try:
