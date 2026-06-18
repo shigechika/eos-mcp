@@ -5,6 +5,31 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/shigechika/eos-mcp/compare/v0.4.0...v0.5.0) (2026-06-18)
+
+
+### Features
+
+* **daily_brief:** scan recent syslog for link/BGP/OSPF/STP/LACP/MLAG alerts ([#11](https://github.com/shigechika/eos-mcp/issues/11)) ([b296ebd](https://github.com/shigechika/eos-mcp/commit/b296ebde93cc11a11edc27d267735f218525f7e5))
+* initial release v0.1.0 ([f61a624](https://github.com/shigechika/eos-mcp/commit/f61a6245b1ea29be403ee4acd8ee0af54999053c))
+
+
+### Bug Fixes
+
+* add GH_REPO env to gh release upload ([#9](https://github.com/shigechika/eos-mcp/issues/9)) ([01c4bad](https://github.com/shigechika/eos-mcp/commit/01c4badf3dc0d1f01e53c873859260c71801e55f))
+* address code review findings and add release automation ([4c8ebac](https://github.com/shigechika/eos-mcp/commit/4c8ebac18ed2abddde708149842c84bf11ee561e))
+* uptime display and add run_commands_batch tool ([#7](https://github.com/shigechika/eos-mcp/issues/7)) ([2fe6626](https://github.com/shigechika/eos-mcp/commit/2fe6626f8c8642164947ecf15733c64d7d016967))
+
+
+### Reverts
+
+* server.json version to 0.0.0 (managed by release workflow) ([e7178b9](https://github.com/shigechika/eos-mcp/commit/e7178b90099b09b374997cbefc7ef3daa539cc77))
+
+
+### Documentation
+
+* add mcp-name comment for MCP Registry ownership validation ([#5](https://github.com/shigechika/eos-mcp/issues/5)) ([dd68164](https://github.com/shigechika/eos-mcp/commit/dd68164b37e93a72fb511e41136ccdbe403416d2))
+
 ## [0.4.0](https://github.com/shigechika/eos-mcp/compare/v0.3.0...v0.4.0) (2026-06-18)
 
 
