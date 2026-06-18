@@ -12,6 +12,7 @@ from eos_mcp.server import (
     _resolve_hosts,
     get_device_facts,
     get_device_facts_batch,
+    health_check,
     run_commands_batch,
 )
 
@@ -207,3 +208,74 @@ def test_run_commands_batch_no_hosts_returns_error():
     ):
         result = run_commands_batch(commands=["show version"])
     assert "No hosts resolved" in result
+
+
+# ---------------------------------------------------------------------------
+# health_check — lightweight, does NOT connect to devices
+# ---------------------------------------------------------------------------
+
+# Keys every health_check result must always carry, regardless of outcome.
+_HEALTH_KEYS = {"status", "service", "version", "config_path", "device_count", "tags", "config"}
+
+
+def test_health_check_healthy(cfg, tmp_path):
+    """With a parseable config, status is healthy and devices/tags are counted."""
+    ini = tmp_path / "config.ini"
+    ini.write_text(
+        textwrap.dedent("""\
+            [DEFAULT]
+            username = admin
+            password = secret
+
+            [sw1.example.com]
+            tags = main,dc1
+
+            [sw2.example.com]
+            tags = backup,dc1
+        """)
+    )
+    with patch("eos_mcp.server.cfg_mod.load", return_value=cfg_mod.load(str(ini))):
+        result = health_check(config_path=str(ini))
+    assert _HEALTH_KEYS.issubset(result)
+    assert result["status"] == "healthy"
+    assert result["service"] == "eos-mcp"
+    assert result["config"] == "ok"
+    assert result["device_count"] == 2
+    assert result["tags"] == ["backup", "dc1", "main"]
+    assert "detail" not in result
+
+
+def test_health_check_does_not_connect():
+    """health_check must never open a device connection (_connect/get_node)."""
+    with (
+        patch("eos_mcp.server.cfg_mod.load", side_effect=cfg_mod.load),
+        patch("eos_mcp.server._connect") as connect,
+        patch("eos_mcp.eapi.get_node") as get_node,
+    ):
+        # No config -> error path, but still must not touch devices.
+        health_check(config_path="/definitely/missing.ini")
+    connect.assert_not_called()
+    get_node.assert_not_called()
+
+
+def test_health_check_config_missing():
+    """A missing config file yields status=error / config=missing with a detail."""
+    result = health_check(config_path="/definitely/missing.ini")
+    assert _HEALTH_KEYS.issubset(result)
+    assert result["status"] == "error"
+    assert result["config"] == "missing"
+    assert result["device_count"] == 0
+    assert result["tags"] == []
+    assert "detail" in result
+    # Compare as paths so the assertion holds on Windows too (str(Path) uses
+    # backslashes there); the production code stores str(find_config_path(...)).
+    assert Path(result["config_path"]) == Path("/definitely/missing.ini")
+
+
+def test_health_check_parse_error_degrades():
+    """An unparseable config degrades (config=error) rather than raising."""
+    with patch("eos_mcp.server.cfg_mod.load", side_effect=configparser.Error("bad ini")):
+        result = health_check(config_path="/some/config.ini")
+    assert result["status"] == "degraded"
+    assert result["config"] == "error"
+    assert "detail" in result
