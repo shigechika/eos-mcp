@@ -65,7 +65,7 @@ eos-mcp
 | `confirm_config_session` | commit timer 待ちのセッションを確定 |
 | `abort_config_session` | 保留中のセッションを中断 |
 | `collect_tech_support` | show tech-support を収集 |
-| `daily_brief` | 複数台のヘルスチェック（環境・errdisabled・稼働時間・メモリ・MLAG） |
+| `daily_brief` | 複数台のヘルスチェック（環境・errdisabled・稼働時間・メモリ・MLAG・直近 syslog アラート） |
 
 ## 要件
 

@@ -70,7 +70,7 @@ eos-mcp
 | `confirm_config_session` | Confirm a pending commit timer session |
 | `abort_config_session` | Abort a pending session |
 | `collect_tech_support` | Collect show tech-support output |
-| `daily_brief` | Health check (environment, errdisabled, uptime) across multiple devices |
+| `daily_brief` | Health check (environment, errdisabled, uptime, MLAG, recent syslog alerts) across multiple devices |
 
 ## Requirements
 
