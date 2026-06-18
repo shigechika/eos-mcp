@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import ssl
 import threading
 from typing import Any
@@ -27,6 +28,30 @@ ssl._create_unverified_context = _tls_compat_context
 # hostname -> pyeapi.client.Node
 _cache: dict[str, pyeapi.client.Node] = {}
 _lock = threading.Lock()
+
+# Default look-back window (hours) for the check_health syslog scan.
+_DEFAULT_SINCE_HOURS = 24
+
+# Recent-log alert patterns for the check_health syslog scan. This mirrors the
+# junos-mcp daily_brief syslog scan (BGP/OSPF/STP/ARP/IF-down) but matches EOS
+# %FACILITY-SEVERITY-MNEMONIC tags. Matched case-insensitively against
+# `show logging last <N> hours` output. Field-verified mnemonics on EOS 4.28:
+# %LINEPROTO-5-UPDOWN, %SPANTREE-6-ROOTCHANGE, %MLAG-4-INTF_INACTIVE_LOCAL,
+# %LAG-5-MEMBER_*.
+_SYSLOG_ALERT_RE = re.compile(
+    r"%LINEPROTO-\d+-UPDOWN.*to\s+down"  # interface line protocol went down
+    r"|%LINK-\d+-UPDOWN.*down"
+    r"|%BGP-\d+-(ADJCHANGE|NOTIFICATION)"  # BGP session reset / adjacency change
+    r"|%OSPF-\d+-ADJCHANGE"  # OSPF adjacency change
+    r"|%SPANTREE-\d+-(ROOTCHANGE|TC|TOPOLOGY|PORT_BLOCKED|OVERRIDE)"  # STP topology change
+    r"|%LAG-\d+-(MEMBER_REMOVED|INACTIVE)"  # LACP member left the bundle
+    r"|%MLAG-[0-4]-"  # MLAG degraded (severity 0-4)
+    r"|%ARP-\d+-",  # ARP anomaly (e.g. duplicate address)
+    re.IGNORECASE,
+)
+
+# Cap syslog matches per device so a flapping link cannot flood the brief.
+_SYSLOG_MAX_MATCHES = 10
 
 
 def get_node(
@@ -196,11 +221,29 @@ def _get_environment_text(node: pyeapi.client.Node) -> str:
     return ""
 
 
-def check_health(node: pyeapi.client.Node) -> dict[str, Any]:
+def _get_syslog_text(node: pyeapi.client.Node, since_hours: int) -> str:
+    """Return recent syslog text, windowed to the last ``since_hours`` hours.
+
+    EOS filters the log buffer natively with ``show logging last <N> hours``,
+    so no client-side timestamp parsing is needed. Falls back to the unfiltered
+    buffer if the time-windowed form is rejected by the running EOS version.
+    """
+    for cmd in (f"show logging last {since_hours} hours", "show logging"):
+        try:
+            return run_show(node, cmd)
+        except Exception:
+            continue
+    return ""
+
+
+def check_health(
+    node: pyeapi.client.Node, since_hours: int = _DEFAULT_SINCE_HOURS
+) -> dict[str, Any]:
     """Run health checks for daily_brief.
 
     Checks: device facts (uptime, memory), environment (temperature/cooling/fans/PSUs),
-    errdisabled interfaces, and MLAG status (when active).
+    errdisabled interfaces, MLAG status (when active), and recent syslog alerts
+    (BGP/OSPF/STP/LACP/MLAG/link-down) within the last ``since_hours`` hours.
 
     Returns dict: {anomalies: list[str], info: dict}.
     anomalies entries are prefixed with 'CRITICAL:' or 'WARNING:'.
@@ -303,5 +346,21 @@ def check_health(node: pyeapi.client.Node) -> dict[str, Any]:
                     anomalies.append(f"CRITICAL: MLAG peer-link={mlag_peer}")
     except Exception:
         pass  # MLAG not configured on this device
+
+    # Recent syslog alerts within the look-back window
+    try:
+        syslog = _get_syslog_text(node, since_hours)
+        count = 0
+        for line in syslog.splitlines():
+            if count >= _SYSLOG_MAX_MATCHES:
+                anomalies.append(
+                    f"WARNING: syslog: ... ({count}+ alert lines, truncated)"
+                )
+                break
+            if _SYSLOG_ALERT_RE.search(line):
+                anomalies.append(f"WARNING: syslog: {line.strip()[:120]}")
+                count += 1
+    except Exception as exc:
+        anomalies.append(f"WARNING: syslog check failed: {exc}")
 
     return {"anomalies": anomalies, "info": info}

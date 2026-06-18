@@ -398,12 +398,15 @@ def daily_brief(
     hostnames: list[str] | None = None,
     tags: list[str] | None = None,
     max_workers: int = 5,
+    since_hours: int = 24,
     config_path: str = "",
 ) -> str:
     """Run health checks on EOS devices and return a Markdown daily brief.
 
     Checks environment (temperature, cooling, fans, PSUs), errdisabled interfaces,
-    and device uptime. Returns CRITICAL/WARNING/OK per device with a summary.
+    device uptime, MLAG status, and recent syslog alerts (BGP/OSPF/STP/LACP/MLAG/
+    link-down) within the last 'since_hours' hours. Returns CRITICAL/WARNING/OK per
+    device with a summary.
     Specify targets via 'hostnames', 'tags', or both (default: all configured devices).
     """
     try:
@@ -422,7 +425,7 @@ def daily_brief(
     def _run_one(host: str) -> tuple[str, dict]:
         try:
             node = _connect(host, cp)
-            return host, eapi.check_health(node)
+            return host, eapi.check_health(node, since_hours)
         except Exception as exc:
             eapi.clear_cache(host)
             return host, {

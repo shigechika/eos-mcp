@@ -27,6 +27,7 @@ def _run_health(
     env_text=_CLEAN_ENV,
     intf_text="",
     mlag_text="state                            : disabled",
+    syslog_text="",
 ):
     """Run check_health with mocked internals. Returns the result dict."""
     node = MagicMock()
@@ -51,6 +52,7 @@ def _run_health(
     with (
         patch("eos_mcp.eapi.get_device_facts", return_value=facts),
         patch("eos_mcp.eapi._get_environment_text", return_value=env_text),
+        patch("eos_mcp.eapi._get_syslog_text", return_value=syslog_text),
         patch("eos_mcp.eapi.run_show", side_effect=_show),
     ):
         return check_health(node)
@@ -310,6 +312,100 @@ def test_check_health_all_ok_no_anomalies():
     result = _run_health()
     assert result["anomalies"] == []
     assert result["info"]["hostname"] == "sw1"
+
+
+# ---------------------------------------------------------------------------
+# check_health — syslog scan
+# ---------------------------------------------------------------------------
+
+_SYSLOG_LINK_DOWN = (
+    "Jun 17 18:24:01 sw1 Ebra: %LINEPROTO-5-UPDOWN: Line protocol on Interface "
+    "Ethernet1, changed state to down"
+)
+_SYSLOG_LINK_UP = (
+    "Jun 17 18:25:01 sw1 Ebra: %LINEPROTO-5-UPDOWN: Line protocol on Interface "
+    "Ethernet1, changed state to up"
+)
+_SYSLOG_MLAG = (
+    "Jun 17 18:24:05 sw1 Mlag: %MLAG-4-INTF_INACTIVE_LOCAL: Local interface "
+    "Port-Channel10 is inactive"
+)
+_SYSLOG_BENIGN = (
+    "Jun 17 18:24:00 sw1 Launcher: %LAUNCHER-6-PROCESS_START: Configuring process"
+)
+
+
+def test_check_health_syslog_link_down_warns():
+    result = _run_health(syslog_text=_SYSLOG_LINK_DOWN)
+    assert any("WARNING: syslog:" in a and "to down" in a for a in result["anomalies"])
+
+
+def test_check_health_syslog_mlag_event_warns():
+    result = _run_health(syslog_text=_SYSLOG_MLAG)
+    assert any("WARNING: syslog:" in a and "MLAG-4" in a for a in result["anomalies"])
+
+
+def test_check_health_syslog_link_up_not_flagged():
+    """A line protocol coming *up* is not an alert."""
+    result = _run_health(syslog_text=_SYSLOG_LINK_UP)
+    assert not any("syslog" in a for a in result["anomalies"])
+
+
+def test_check_health_syslog_benign_not_flagged():
+    result = _run_health(syslog_text=_SYSLOG_BENIGN)
+    assert not any("syslog" in a for a in result["anomalies"])
+
+
+def test_check_health_syslog_empty_no_anomaly():
+    result = _run_health(syslog_text="")
+    assert not any("syslog" in a for a in result["anomalies"])
+
+
+def test_check_health_syslog_truncates_at_max():
+    """More than _SYSLOG_MAX_MATCHES alert lines yield a truncated marker."""
+    lines = "\n".join(_SYSLOG_LINK_DOWN for _ in range(15))
+    result = _run_health(syslog_text=lines)
+    syslog_anoms = [a for a in result["anomalies"] if "syslog" in a]
+    assert any("truncated" in a for a in syslog_anoms)
+    # 10 real matches + 1 truncation marker
+    assert len(syslog_anoms) == eapi_mod._SYSLOG_MAX_MATCHES + 1
+
+
+# ---------------------------------------------------------------------------
+# _get_syslog_text
+# ---------------------------------------------------------------------------
+
+
+def test_get_syslog_text_time_windowed_cmd_succeeds():
+    node = MagicMock()
+    with patch("eos_mcp.eapi.run_show", return_value="log data") as mock_show:
+        result = eapi_mod._get_syslog_text(node, 24)
+    assert result == "log data"
+    assert mock_show.call_count == 1
+    assert mock_show.call_args[0][1] == "show logging last 24 hours"
+
+
+def test_get_syslog_text_falls_back_to_unfiltered():
+    node = MagicMock()
+    calls = []
+
+    def _side(n, cmd):
+        calls.append(cmd)
+        if len(calls) == 1:
+            raise RuntimeError("invalid command")
+        return "log data"
+
+    with patch("eos_mcp.eapi.run_show", side_effect=_side):
+        result = eapi_mod._get_syslog_text(node, 18)
+    assert result == "log data"
+    assert calls == ["show logging last 18 hours", "show logging"]
+
+
+def test_get_syslog_text_both_fail_returns_empty():
+    node = MagicMock()
+    with patch("eos_mcp.eapi.run_show", side_effect=RuntimeError("no log")):
+        result = eapi_mod._get_syslog_text(node, 24)
+    assert result == ""
 
 
 # ---------------------------------------------------------------------------
