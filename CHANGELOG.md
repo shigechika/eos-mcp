@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/shigechika/eos-mcp/compare/v0.3.1...v0.4.0) (2026-06-26)
+
+
+### Features
+
+* **daily_brief:** parse all EOS logging timestamp formats (RFC3339 + traditional + default) ([#23](https://github.com/shigechika/eos-mcp/issues/23)) ([35d90f7](https://github.com/shigechika/eos-mcp/commit/35d90f7c9a5f18f73830e6174fb869cf2935e7b2)), closes [#22](https://github.com/shigechika/eos-mcp/issues/22)
+
 ## [0.3.1](https://github.com/shigechika/eos-mcp/compare/v0.3.0...v0.3.1) (2026-06-26)
 
 
