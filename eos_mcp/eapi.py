@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import re
 import ssl
 import threading
@@ -221,18 +222,112 @@ def _get_environment_text(node: pyeapi.client.Node) -> str:
     return ""
 
 
-def _get_syslog_text(node: pyeapi.client.Node, since_hours: int) -> str:
-    """Return recent syslog text, windowed to the last ``since_hours`` hours.
+# Leading "Mon DD HH:MM:SS" of an EOS syslog line (no year — EOS omits it).
+_SYSLOG_TS_RE = re.compile(r"^([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\b")
+_MONTHS = {
+    m: i
+    for i, m in enumerate(
+        ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+        start=1,
+    )
+}
 
-    EOS filters the log buffer natively with ``show logging last <N> hours``,
-    so no client-side timestamp parsing is needed. Falls back to the unfiltered
-    buffer if the time-windowed form is rejected by the running EOS version.
+
+def _device_now(node: pyeapi.client.Node) -> datetime.datetime:
+    """Return the device's current local time (naive) from ``show clock``.
+
+    EOS syslog timestamps carry no year, so the device clock — which does — is
+    the anchor for reconstructing them. Falls back to the local host clock if
+    ``show clock`` can't be read or parsed.
     """
-    for cmd in (f"show logging last {since_hours} hours", "show logging"):
+    try:
+        out = run_show(node, "show clock")
+        # e.g. "Fri Jun 26 16:01:37 2026  Timezone: Japan ..."
+        m = re.search(
+            r"\b([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})\b", out
+        )
+        # Use the same locale-independent month map as the syslog parser rather
+        # than strptime("%b"), whose month names are locale-dependent.
+        mon = _MONTHS.get(m.group(1)) if m else None
+        if mon:
+            return datetime.datetime(
+                int(m.group(6)), mon, int(m.group(2)),
+                int(m.group(3)), int(m.group(4)), int(m.group(5)),
+            )
+    except Exception:
+        pass
+    # Fallback: host clock. The primary show-clock path keeps device_now and the
+    # syslog lines on the same (device-local) clock; this fallback assumes the
+    # host wall time is close enough.
+    return datetime.datetime.now()
+
+
+def _window_syslog(
+    text: str, device_now: datetime.datetime, since_hours: int
+) -> str:
+    """Keep only syslog lines within the last ``since_hours`` of ``device_now``.
+
+    EOS syslog timestamps have no year, so EOS's own ``show logging last <N>
+    hours`` (and the full-buffer fallback) can surface a prior-year entry whose
+    month/day/time happens to land in the window — a real source of stale
+    false-positives (e.g. a link flap from exactly one year ago). We reconstruct
+    each line's year from the device clock by walking the (chronological) buffer
+    newest→oldest and decrementing the year whenever the calendar rolls forward
+    as we move back, then drop anything older than the window. Lines without a
+    parseable timestamp (continuations) are kept — the caller's alert regex
+    decides their relevance.
+
+    Assumes a reasonably dense buffer: the year-wrap is inferred from a
+    near-full-year forward jump between adjacent entries, so a single gap longer
+    than that could mis-date the entries before it (EOS's ring buffer is dense
+    in practice).
+    """
+    cutoff = device_now - datetime.timedelta(hours=since_hours)
+    # Only a near-year forward jump (while moving *back* through the buffer)
+    # means the calendar actually wrapped; smaller forward deltas are NTP
+    # backward steps or async-logging reorder, NOT a year change — tolerate them
+    # so one out-of-order pair can't flip the year and drop the rest of the buffer.
+    wrap_gap = datetime.timedelta(days=180)
+    dated: list[tuple[datetime.datetime | None, str]] = []
+    year = device_now.year
+    prev = device_now
+    for line in reversed(text.splitlines()):
+        m = _SYSLOG_TS_RE.match(line)
+        mon = _MONTHS.get(m.group(1)) if m else None
+        if mon is None:
+            dated.append((None, line))
+            continue
+        day, hh, mm, ss = (int(m.group(i)) for i in (2, 3, 4, 5))
         try:
-            return run_show(node, cmd)
+            dt = datetime.datetime(year, mon, day, hh, mm, ss)
+            if dt > prev + wrap_gap:  # ~full-year forward jump ⇒ crossed a year boundary
+                year -= 1
+                dt = datetime.datetime(year, mon, day, hh, mm, ss)
+        except ValueError:  # e.g. Feb 29 in a reconstructed non-leap year
+            dated.append((None, line))
+            continue
+        prev = dt
+        dated.append((dt, line))
+    dated.reverse()
+    return "\n".join(line for dt, line in dated if dt is None or dt >= cutoff)
+
+
+def _get_syslog_text(node: pyeapi.client.Node, since_hours: int) -> str:
+    """Return syslog text windowed to the last ``since_hours`` hours.
+
+    EOS syslog timestamps carry no year, so EOS's native ``show logging last
+    <N> hours`` can leak prior-year entries (same month/day/time). We therefore
+    fetch the full buffer (dense, so year reconstruction is reliable) and apply
+    a client-side, year-aware filter anchored to the device clock. Falls back to
+    the native time-windowed form, then to empty, if a fetch is rejected.
+    """
+    device_now = _device_now(node)
+    for cmd in ("show logging", f"show logging last {since_hours} hours"):
+        try:
+            text = run_show(node, cmd)
         except Exception:
             continue
+        return _window_syslog(text, device_now, since_hours)
     return ""
 
 
