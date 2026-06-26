@@ -222,8 +222,19 @@ def _get_environment_text(node: pyeapi.client.Node) -> str:
     return ""
 
 
-# Leading "Mon DD HH:MM:SS" of an EOS syslog line (no year — EOS omits it).
-_SYSLOG_TS_RE = re.compile(r"^([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\b")
+# RFC3339 / high-resolution leading timestamp, e.g. "2026-06-26T09:22:56.123+09:00".
+# We read the wall-clock fields and ignore the fraction/offset (the offset is the
+# device's own, and we anchor windowing on the device clock).
+_RFC3339_TS_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})")
+# Traditional (RFC3164) leading "Mon DD HH:MM:SS", optionally followed by
+# subseconds and any of the EOS `traditional` extras (timezone abbrev and/or a
+# 4-digit year, in either order). Group 6 captures those trailing extras so an
+# explicit year can be used when present; otherwise the year is reconstructed.
+_SYSLOG_TS_RE = re.compile(
+    r"^([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?"
+    r"((?:\s+(?:[A-Z]{2,5}|\d{4})(?=\s|$))*)"  # whole tokens only (not a hostname prefix)
+)
+_YEAR_RE = re.compile(r"\d{4}")
 _MONTHS = {
     m: i
     for i, m in enumerate(
@@ -267,20 +278,24 @@ def _window_syslog(
 ) -> str:
     """Keep only syslog lines within the last ``since_hours`` of ``device_now``.
 
-    EOS syslog timestamps have no year, so EOS's own ``show logging last <N>
-    hours`` (and the full-buffer fallback) can surface a prior-year entry whose
-    month/day/time happens to land in the window — a real source of stale
-    false-positives (e.g. a link flap from exactly one year ago). We reconstruct
-    each line's year from the device clock by walking the (chronological) buffer
-    newest→oldest and decrementing the year whenever the calendar rolls forward
-    as we move back, then drop anything older than the window. Lines without a
-    parseable timestamp (continuations) are kept — the caller's alert regex
-    decides their relevance.
+    Handles every EOS ``logging format timestamp`` rendering:
 
-    Assumes a reasonably dense buffer: the year-wrap is inferred from a
-    near-full-year forward jump between adjacent entries, so a single gap longer
-    than that could mis-date the entries before it (EOS's ring buffer is dense
-    in practice).
+    - ``high-resolution`` (RFC3339, ``2026-06-26T09:22:56.123+09:00``) — the year
+      is present, parsed directly (wall-clock fields; the offset is the device's
+      own and we anchor on the device clock).
+    - ``traditional year`` / ``traditional ... year`` (``Jun 26 09:22:56 2026``,
+      with optional timezone abbrev in either order) — the explicit year is used.
+    - ``traditional timezone`` and the default (``Jun 26 09:22:56`` [``JST``]) —
+      no year, so it is reconstructed from the device clock by walking the
+      (chronological) buffer newest→oldest, decrementing the year on a
+      near-full-year forward jump (so a one-year-ago entry isn't mistaken for
+      today). Any line carrying an explicit year (RFC3339 or traditional+year)
+      re-anchors the reconstruction year, so a mixed buffer during a format
+      switch resolves correctly.
+
+    Lines without a parseable timestamp (continuations) are kept — the caller's
+    alert regex decides their relevance. Year reconstruction assumes a
+    reasonably dense buffer (EOS's ring buffer is dense in practice).
     """
     cutoff = device_now - datetime.timedelta(hours=since_hours)
     # Only a near-year forward jump (while moving *back* through the buffer)
@@ -292,15 +307,34 @@ def _window_syslog(
     year = device_now.year
     prev = device_now
     for line in reversed(text.splitlines()):
+        iso = _RFC3339_TS_RE.match(line)
+        if iso:
+            try:
+                dt = datetime.datetime(*(int(iso.group(i)) for i in range(1, 7)))
+            except ValueError:
+                dated.append((None, line))
+                continue
+            year, prev = dt.year, dt  # explicit year re-anchors reconstruction
+            dated.append((dt, line))
+            continue
         m = _SYSLOG_TS_RE.match(line)
         mon = _MONTHS.get(m.group(1)) if m else None
         if mon is None:
             dated.append((None, line))
             continue
         day, hh, mm, ss = (int(m.group(i)) for i in (2, 3, 4, 5))
+        # An explicit, plausible 4-digit year among the trailing tokens (a
+        # `traditional year` line) is authoritative and re-anchors reconstruction.
+        # The range guard keeps a numeric hostname (e.g. "7280r3") from posing as a year.
+        explicit = next(
+            (y for y in (int(t) for t in _YEAR_RE.findall(m.group(6))) if 2000 <= y <= 2099),
+            None,
+        )
+        if explicit is not None:
+            year = explicit
         try:
             dt = datetime.datetime(year, mon, day, hh, mm, ss)
-            if dt > prev + wrap_gap:  # ~full-year forward jump ⇒ crossed a year boundary
+            if explicit is None and dt > prev + wrap_gap:  # ~full-year jump ⇒ year boundary
                 year -= 1
                 dt = datetime.datetime(year, mon, day, hh, mm, ss)
         except ValueError:  # e.g. Feb 29 in a reconstructed non-leap year
