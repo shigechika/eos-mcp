@@ -506,6 +506,90 @@ def test_window_syslog_newest_line_slightly_after_clock_kept():
     assert "16:03:00" in out  # not flipped to prior year by the prev=device_now anchor
 
 
+def test_window_syslog_parses_rfc3339():
+    """high-resolution (RFC3339) lines carry the year; window by it directly."""
+    now = datetime.datetime(2026, 6, 26, 16, 0, 0)
+    buf = "\n".join(
+        [
+            "2026-06-20T10:00:00.000000+09:00 sw1 Ebra: rfc3339-old",     # >24h → drop
+            "2026-06-26T15:30:00.123456+09:00 sw1 Ebra: rfc3339-recent",  # 30m → keep
+        ]
+    )
+    out = eapi_mod._window_syslog(buf, now, 24)
+    assert "rfc3339-recent" in out
+    assert "rfc3339-old" not in out
+
+
+def test_window_syslog_traditional_with_year():
+    """traditional+year uses the explicit year (and ignores a timezone token)."""
+    now = datetime.datetime(2026, 6, 26, 16, 0, 0)
+    buf = "\n".join(
+        [
+            "Jun 26 08:00:00 2025 sw1 Ebra: %LINEPROTO-5-UPDOWN: Et19 changed state to down",  # 2025 → drop
+            "Jun 26 15:30:00 JST 2026 sw1 Ebra: trad-year-tz-recent",  # explicit 2026 + tz → keep
+        ]
+    )
+    out = eapi_mod._window_syslog(buf, now, 24)
+    assert "trad-year-tz-recent" in out
+    assert "Jun 26 08:00:00 2025" not in out  # explicit 2025 → out of window
+
+
+def test_window_syslog_traditional_timezone_no_year_reconstructs():
+    """traditional+timezone has no year → reconstruct; tz token is ignored."""
+    now = datetime.datetime(2026, 6, 26, 16, 0, 0)
+    buf = "Jun 26 15:30:00 JST sw1 Ebra: tz-only-recent"
+    out = eapi_mod._window_syslog(buf, now, 24)
+    assert "tz-only-recent" in out  # reconstructed to 2026, in window
+
+
+def test_window_syslog_mixed_formats():
+    """A buffer mixing RFC3339, traditional+year and year-less all window right."""
+    now = datetime.datetime(2026, 6, 26, 16, 0, 0)
+    buf = "\n".join(
+        [
+            "Jun 20 10:00:00 2026 sw1 Ebra: trad-year-old",              # explicit 2026, >24h → drop
+            "Jun 26 15:30:00 sw1 Ebra: yearless-recent",                 # reconstruct 2026 → keep
+            "Jun 26 15:45:00 2026 sw1 Ebra: trad-year-recent",           # explicit 2026 → keep
+            "2026-06-26T15:50:00+09:00 sw1 Ebra: rfc3339-recent",        # RFC3339 → keep
+        ]
+    )
+    out = eapi_mod._window_syslog(buf, now, 24)
+    assert "rfc3339-recent" in out
+    assert "trad-year-recent" in out
+    assert "yearless-recent" in out
+    assert "trad-year-old" not in out
+
+
+def test_window_syslog_numeric_hostname_not_misread_as_year():
+    """A 4-digit-leading hostname (default format, no year) must not pose as a year."""
+    now = datetime.datetime(2026, 6, 26, 16, 0, 0)
+    buf = "\n".join(
+        [
+            "Jun 20 10:00:00 7280r3 Ebra: numeric-host-old",     # >24h; hostname starts 7280
+            "Jun 26 15:30:00 7280r3 Ebra: numeric-host-recent",
+        ]
+    )
+    out = eapi_mod._window_syslog(buf, now, 24)
+    assert "numeric-host-recent" in out
+    # If "7280" were read as the year, the old line would never fall out of window.
+    assert "numeric-host-old" not in out
+
+
+def test_window_syslog_traditional_year_then_timezone_order():
+    """traditional with `year timezone` order (not just `timezone year`)."""
+    now = datetime.datetime(2026, 6, 26, 16, 0, 0)
+    buf = "Jun 26 15:30:00 2026 JST sw1 Ebra: year-then-tz"
+    out = eapi_mod._window_syslog(buf, now, 24)
+    assert "year-then-tz" in out
+
+
+def test_window_syslog_rfc3339_zulu_offset():
+    now = datetime.datetime(2026, 6, 26, 16, 0, 0)
+    buf = "2026-06-26T15:30:00Z sw1 Ebra: zulu-recent"
+    out = eapi_mod._window_syslog(buf, now, 24)
+    assert "zulu-recent" in out
+
+
 def test_window_syslog_keeps_untimestamped_lines():
     now = datetime.datetime(2026, 6, 26, 16, 0, 0)
     out = eapi_mod._window_syslog("a continuation line without timestamp", now, 24)
