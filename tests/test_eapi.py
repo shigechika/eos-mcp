@@ -1,5 +1,6 @@
 """Unit tests for eapi helpers (no live device required)."""
 
+import datetime
 from unittest.mock import MagicMock, patch
 
 import eos_mcp.eapi as eapi_mod
@@ -376,36 +377,139 @@ def test_check_health_syslog_truncates_at_max():
 # ---------------------------------------------------------------------------
 
 
-def test_get_syslog_text_time_windowed_cmd_succeeds():
+_SHOW_CLOCK = "Fri Jun 26 16:00:00 2026\nTimezone: Japan"
+
+
+def test_get_syslog_text_fetches_full_buffer_and_windows():
+    """Fetches the full buffer, anchors on the device clock, drops out-of-window."""
     node = MagicMock()
-    with patch("eos_mcp.eapi.run_show", return_value="log data") as mock_show:
+
+    def _side(_n, cmd):
+        if cmd == "show clock":
+            return _SHOW_CLOCK
+        if cmd == "show logging":
+            return (
+                "Jun 20 10:00:00 sw1 Ebra: old-out-of-window\n"
+                "Jun 26 15:30:00 sw1 Ebra: recent-in-window"
+            )
+        raise RuntimeError(f"unexpected {cmd}")
+
+    with patch("eos_mcp.eapi.run_show", side_effect=_side):
         result = eapi_mod._get_syslog_text(node, 24)
-    assert result == "log data"
-    assert mock_show.call_count == 1
-    assert mock_show.call_args[0][1] == "show logging last 24 hours"
+    assert "recent-in-window" in result
+    assert "old-out-of-window" not in result  # 6/20 is >24h before 6/26 16:00
 
 
-def test_get_syslog_text_falls_back_to_unfiltered():
+def test_get_syslog_text_falls_back_to_native_window():
     node = MagicMock()
     calls = []
 
-    def _side(n, cmd):
+    def _side(_n, cmd):
         calls.append(cmd)
-        if len(calls) == 1:
-            raise RuntimeError("invalid command")
-        return "log data"
+        if cmd == "show clock":
+            return _SHOW_CLOCK
+        if cmd == "show logging":
+            raise RuntimeError("buffer too large")
+        if cmd == "show logging last 18 hours":
+            return "Jun 26 15:00:00 sw1 Ebra: recent-in-window"
+        raise RuntimeError(f"unexpected {cmd}")
 
     with patch("eos_mcp.eapi.run_show", side_effect=_side):
         result = eapi_mod._get_syslog_text(node, 18)
-    assert result == "log data"
-    assert calls == ["show logging last 18 hours", "show logging"]
+    assert "recent-in-window" in result
+    assert "show logging" in calls and "show logging last 18 hours" in calls
 
 
 def test_get_syslog_text_both_fail_returns_empty():
     node = MagicMock()
-    with patch("eos_mcp.eapi.run_show", side_effect=RuntimeError("no log")):
-        result = eapi_mod._get_syslog_text(node, 24)
-    assert result == ""
+
+    def _side(_n, cmd):
+        if cmd == "show clock":
+            return _SHOW_CLOCK
+        raise RuntimeError("no log")
+
+    with patch("eos_mcp.eapi.run_show", side_effect=_side):
+        assert eapi_mod._get_syslog_text(node, 24) == ""
+
+
+# ---------------------------------------------------------------------------
+# _device_now / _window_syslog (year-less syslog reconstruction)
+# ---------------------------------------------------------------------------
+
+
+def test_device_now_parses_show_clock():
+    node = MagicMock()
+    with patch("eos_mcp.eapi.run_show", return_value="Fri Jun 26 16:01:37 2026\nTimezone: Japan"):
+        dt = eapi_mod._device_now(node)
+    assert (dt.year, dt.month, dt.day, dt.hour, dt.minute) == (2026, 6, 26, 16, 1)
+
+
+def test_device_now_falls_back_when_unparseable():
+    node = MagicMock()
+    with patch("eos_mcp.eapi.run_show", return_value="garbage output"):
+        dt = eapi_mod._device_now(node)
+    assert isinstance(dt, datetime.datetime)
+
+
+def test_window_syslog_drops_prior_year_same_date():
+    """A flap from exactly one year ago must not count as recent (the nhv03 bug)."""
+    now = datetime.datetime(2026, 6, 26, 16, 0, 0)
+    buf = "\n".join(
+        [
+            "Jun 26 08:00:00 sw1 Ebra: %LINEPROTO-5-UPDOWN: Ethernet19 changed state to down",  # 2025
+            "Nov 19 10:00:00 sw1 Ebra: boundary-2025",
+            "Jan 05 03:00:00 sw1 Ebra: early-2026-out-of-window",
+            "Jun 26 15:30:00 sw1 Ebra: recent-2026",
+        ]
+    )
+    out = eapi_mod._window_syslog(buf, now, 24)
+    assert "recent-2026" in out
+    assert "Jun 26 08:00:00" not in out  # reconstructed to 2025 → dropped
+    assert "boundary-2025" not in out
+    assert "early-2026-out-of-window" not in out  # Jan 5 is >24h before Jun 26
+
+
+def test_window_syslog_year_boundary_keeps_recent():
+    """Dec→Jan: a Dec-31 entry minutes before a Jan-1 'now' stays in-window."""
+    now = datetime.datetime(2026, 1, 1, 0, 30, 0)
+    buf = "\n".join(
+        [
+            "Dec 31 23:50:00 sw1 Ebra: %LINEPROTO-5-UPDOWN: Ethernet1 changed state to down",  # 2025
+            "Jan 01 00:20:00 sw1 Ebra: newyear-2026",
+        ]
+    )
+    out = eapi_mod._window_syslog(buf, now, 24)
+    assert "Dec 31 23:50:00" in out  # 40 min ago (2025) — kept
+    assert "newyear-2026" in out
+
+
+def test_window_syslog_tolerates_minor_out_of_order():
+    """An NTP backward step (buffer order vs clock) must not flip the year."""
+    now = datetime.datetime(2026, 6, 26, 16, 0, 0)
+    buf = "\n".join(
+        [
+            "Jun 26 15:05:00 sw1 Ebra: before-ntp-step",  # earlier in buffer, later clock
+            "Jun 26 15:00:30 sw1 Ebra: after-ntp-step",   # NTP stepped back ~4.5 min
+        ]
+    )
+    out = eapi_mod._window_syslog(buf, now, 24)
+    # Both are today; the ~4.5 min reverse jump must not be read as a year wrap.
+    assert "before-ntp-step" in out
+    assert "after-ntp-step" in out
+
+
+def test_window_syslog_newest_line_slightly_after_clock_kept():
+    """A newest line a few minutes after device_now must not be dropped."""
+    now = datetime.datetime(2026, 6, 26, 16, 0, 0)
+    buf = "Jun 26 16:03:00 sw1 Ebra: %LINEPROTO-5-UPDOWN: Ethernet1 changed state to down"
+    out = eapi_mod._window_syslog(buf, now, 24)
+    assert "16:03:00" in out  # not flipped to prior year by the prev=device_now anchor
+
+
+def test_window_syslog_keeps_untimestamped_lines():
+    now = datetime.datetime(2026, 6, 26, 16, 0, 0)
+    out = eapi_mod._window_syslog("a continuation line without timestamp", now, 24)
+    assert "continuation line" in out
 
 
 # ---------------------------------------------------------------------------
