@@ -69,13 +69,7 @@ def main() -> None:
     parser.add_argument(
         "--check-host",
         metavar="HOSTNAME",
-        help="With --check, also open an eAPI connection to HOSTNAME.",
-    )
-    parser.add_argument(
-        "--transport",
-        choices=["stdio", "streamable-http"],
-        default="stdio",
-        help="Transport protocol (default: stdio)",
+        help="Also open an eAPI connection to HOSTNAME (implies --check).", 
     )
     args = parser.parse_args()
 
@@ -83,7 +77,7 @@ def main() -> None:
         sys.exit(_check_config(args.check_host))
 
     try:
-        mcp.run(transport=args.transport)
+        mcp.run(transport="stdio")
     except KeyboardInterrupt:
         os._exit(0)
 

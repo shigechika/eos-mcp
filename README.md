@@ -47,7 +47,7 @@ eos-mcp --check
 # Test connectivity to a specific host
 eos-mcp --check --check-host switch1.example.com
 
-# Start MCP server (stdio transport, default)
+# Start MCP server (stdio transport)
 eos-mcp
 ```
 
