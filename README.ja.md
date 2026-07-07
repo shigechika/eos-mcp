@@ -43,7 +43,7 @@ eos-mcp --check
 # 特定ホストへの疎通確認
 eos-mcp --check --check-host switch1.example.com
 
-# MCP サーバ起動（stdio トランスポート、デフォルト）
+# MCP サーバ起動（stdio トランスポート）
 eos-mcp
 ```
 

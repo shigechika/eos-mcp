@@ -4,8 +4,9 @@
 
 MCP server for Arista EOS network devices, exposing show commands, config
 retrieval/push, tech-support collection, and a daily health-check brief to AI
-assistants via eAPI (pyeapi). Default transport is stdio; `--transport
-streamable-http` is also supported.
+assistants via eAPI (pyeapi). Transport is stdio only — no HTTP transport is
+exposed by this server; front it with a dedicated stdio-to-HTTP bridge (e.g.
+`mcp-stdio`) if HTTP access is needed.
 
 ## Commands
 
@@ -36,8 +37,7 @@ python3 -m venv .venv
   `~/.config/eos-mcp/config.ini`); `get_creds`/`get_hosts` read
   per-host `[section]` credentials/tags with `[DEFAULT]` fallback.
 - `eos_mcp/__main__.py` — argparse CLI: `--check`/`--check-host` (config
-  validation, exits before the server ever starts) and `--transport
-  stdio|streamable-http` for `mcp.run(...)`.
+  validation, exits before the server ever starts), then `mcp.run(transport="stdio")`.
 - Note: `eapi.get_node()` calls `pyeapi.connect()` without `return_node=True`,
   so it actually returns a pyeapi `EapiConnection`, not a `Node` (the type
   hint says `Node`).

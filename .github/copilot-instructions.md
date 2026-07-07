@@ -27,23 +27,20 @@ since it doesn't run here.
 
 # What to focus review on in this repo
 
-## 1. Transport is not stdio-only — check which mode a change affects
+## 1. Transport is stdio-only — stdout is a JSON-RPC channel, not a log stream
 
-`eos_mcp/__main__.py` supports `--transport stdio` (default) and
-`--transport streamable-http`, both dispatched via `mcp.run(transport=...)`.
-Today, `server.py`/`eapi.py`/`config.py` contain **no** `print()` or
-`logging` calls at all — the only stdout writes in the codebase are the
-`print()`s in `__main__.py`'s `_check_config()` (the `--check`/`--check-host`
-path), which always `sys.exit()`s *before* `mcp.run()` is ever reached, so it
-never interleaves with a live JSON-RPC session. Those existing prints are
-correct as-is — don't flag them.
+`eos_mcp/__main__.py` runs `mcp.run(transport="stdio")` unconditionally; this
+server exposes no HTTP transport (if HTTP access is ever needed, it goes
+through a separate stdio-to-HTTP bridge, not a mode of this process). Today,
+`server.py`/`eapi.py`/`config.py` contain **no** `print()` or `logging` calls
+at all — the only stdout writes in the codebase are the `print()`s in
+`__main__.py`'s `_check_config()` (the `--check`/`--check-host` path), which
+always `sys.exit()`s *before* `mcp.run()` is ever reached, so it never
+interleaves with a live JSON-RPC session. Those existing prints are correct
+as-is — don't flag them.
 The rule for new code: any `print()` or unconfigured logging added to a tool
 handler, `eapi.py`, or anywhere on the path `mcp.run()` executes would
-corrupt the stdio JSON-RPC stream and must go to stderr instead. This
-constraint is specific to the stdio transport; under `streamable-http` a
-stray stdout write wouldn't corrupt the protocol response, but since the
-tool code is shared between both transports, treat the discipline as
-universal for anything in `server.py`/`eapi.py`/`config.py`.
+corrupt the stdio JSON-RPC stream and must go to stderr instead.
 
 ## 2. FastMCP already wraps tool returns — don't ask for manual envelope code
 
