@@ -2,7 +2,8 @@
 # Copy to ~/.config/eos-mcp/config.ini and fill in credentials.
 #
 # Discovery order:
-#   --config_path arg > EOS_MCP_CONFIG env var > ./config.ini > ~/.config/eos-mcp/config.ini
+#   EOS_MCP_CONFIG env var > ./config.ini > ~/.config/eos-mcp/config.ini
+# (individual MCP tool calls may also override the path via a config_path parameter)
 
 [DEFAULT]
 username = admin

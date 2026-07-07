@@ -29,10 +29,11 @@ tags = main,dc1
 ```
 
 設定ファイルの探索順:
-1. `--config_path` 引数
-2. `EOS_MCP_CONFIG` 環境変数
-3. `./config.ini`（カレントディレクトリ）
-4. `~/.config/eos-mcp/config.ini`
+1. `EOS_MCP_CONFIG` 環境変数
+2. `./config.ini`（カレントディレクトリ）
+3. `~/.config/eos-mcp/config.ini`
+
+（個々のMCPツール呼び出しでは、`config_path`パラメータでパスを上書きすることも可能）
 
 ## 使い方
 
