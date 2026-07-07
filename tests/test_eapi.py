@@ -334,6 +334,26 @@ _SYSLOG_MLAG = (
 _SYSLOG_BENIGN = (
     "Jun 17 18:24:00 sw1 Launcher: %LAUNCHER-6-PROCESS_START: Configuring process"
 )
+_SYSLOG_BGP_DOWN = (
+    "Jun 17 18:24:10 sw1 Bgp: %BGP-5-ADJCHANGE: peer 10.0.0.1 (AS 65001) old "
+    "state Established event Stop new state Idle"
+)
+_SYSLOG_BGP_UP = (
+    "Jun 17 18:24:20 sw1 Bgp: %BGP-5-ADJCHANGE: peer 10.0.0.1 (AS 65001) old "
+    "state OpenConfirm event RecvKeepAlive new state Established"
+)
+_SYSLOG_BGP_NOTIFICATION = (
+    "Jun 17 18:24:30 sw1 Bgp: %BGP-5-NOTIFICATION: sent to neighbor 10.0.0.1 "
+    "active 6/2 (Cease/administrative reset) 0 bytes"
+)
+_SYSLOG_OSPF_DOWN = (
+    "Jun 17 18:24:40 sw1 Ospf: %OSPF-5-ADJCHANGE: Nbr 10.0.0.2 on Ethernet1 "
+    "from FULL to DOWN, Neighbor Down: Dead timer expired"
+)
+_SYSLOG_OSPF_UP = (
+    "Jun 17 18:24:50 sw1 Ospf: %OSPF-5-ADJCHANGE: Nbr 10.0.0.2 on Ethernet1 "
+    "from LOADING to FULL, Loading Done"
+)
 
 
 def test_check_health_syslog_link_down_warns():
@@ -349,6 +369,34 @@ def test_check_health_syslog_mlag_event_warns():
 def test_check_health_syslog_link_up_not_flagged():
     """A line protocol coming *up* is not an alert."""
     result = _run_health(syslog_text=_SYSLOG_LINK_UP)
+    assert not any("syslog" in a for a in result["anomalies"])
+
+
+def test_check_health_syslog_bgp_down_warns():
+    result = _run_health(syslog_text=_SYSLOG_BGP_DOWN)
+    assert any("WARNING: syslog:" in a and "BGP-5-ADJCHANGE" in a for a in result["anomalies"])
+
+
+def test_check_health_syslog_bgp_up_not_flagged():
+    """A BGP session coming up (old state != Established) is not an alert."""
+    result = _run_health(syslog_text=_SYSLOG_BGP_UP)
+    assert not any("syslog" in a for a in result["anomalies"])
+
+
+def test_check_health_syslog_bgp_notification_warns():
+    """BGP-NOTIFICATION is always a reset, unconditionally flagged."""
+    result = _run_health(syslog_text=_SYSLOG_BGP_NOTIFICATION)
+    assert any("WARNING: syslog:" in a and "BGP-5-NOTIFICATION" in a for a in result["anomalies"])
+
+
+def test_check_health_syslog_ospf_down_warns():
+    result = _run_health(syslog_text=_SYSLOG_OSPF_DOWN)
+    assert any("WARNING: syslog:" in a and "OSPF-5-ADJCHANGE" in a for a in result["anomalies"])
+
+
+def test_check_health_syslog_ospf_up_not_flagged():
+    """An OSPF neighbor reaching FULL is not an alert."""
+    result = _run_health(syslog_text=_SYSLOG_OSPF_UP)
     assert not any("syslog" in a for a in result["anomalies"])
 
 
