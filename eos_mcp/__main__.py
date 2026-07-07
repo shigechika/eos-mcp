@@ -69,7 +69,7 @@ def main() -> None:
     parser.add_argument(
         "--check-host",
         metavar="HOSTNAME",
-        help="With --check, also open an eAPI connection to HOSTNAME.",
+        help="Also open an eAPI connection to HOSTNAME (implies --check).", 
     )
     args = parser.parse_args()
 
