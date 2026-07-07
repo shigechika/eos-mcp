@@ -33,10 +33,12 @@ tags = main,dc1
 ```
 
 Config file discovery order:
-1. `--config_path` argument
-2. `EOS_MCP_CONFIG` environment variable
-3. `./config.ini` (current directory)
-4. `~/.config/eos-mcp/config.ini`
+1. `EOS_MCP_CONFIG` environment variable
+2. `./config.ini` (current directory)
+3. `~/.config/eos-mcp/config.ini`
+
+(Individual MCP tool calls may also override the path via a `config_path`
+parameter.)
 
 ## Usage
 
