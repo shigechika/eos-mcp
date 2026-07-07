@@ -31,8 +31,8 @@ python3 -m venv .venv
   time (`SECLEVEL=0`, min TLS 1.0) so pyeapi's HTTPS transport can still
   reach older EOS releases (4.28.x) under Python's stricter default TLS
   policy — intentional compat shim, not a bug.
-- `eos_mcp/config.py` — XDG-style `config.ini` loader/discovery
-  (`--config_path` arg > `EOS_MCP_CONFIG` env var > `./config.ini` >
+- `eos_mcp/config.py` — XDG-style `config.ini` loader/discovery (per-call
+  `config_path` tool parameter > `EOS_MCP_CONFIG` env var > `./config.ini` >
   `~/.config/eos-mcp/config.ini`); `get_creds`/`get_hosts` read
   per-host `[section]` credentials/tags with `[DEFAULT]` fallback.
 - `eos_mcp/__main__.py` — argparse CLI: `--check`/`--check-host` (config
@@ -44,12 +44,17 @@ python3 -m venv .venv
 
 ## Conventions
 
-- Every device-touching tool wraps the call in `try/except Exception`, calls
-  `eapi.clear_cache(hostname)` on failure (evicts the cached connection so
-  the next call reconnects), and returns `f"Error ({hostname}): {e}"`
-  instead of raising.
-- Tests use `unittest.mock` (`patch`/`MagicMock`) exclusively; pyeapi is
-  mocked at the `eos_mcp.server._connect` / `eos_mcp.eapi.*` boundary.
+- Every device-touching tool wraps the call in `try/except Exception` and
+  calls `eapi.clear_cache(hostname)` on failure (evicts the cached
+  connection so the next call reconnects) instead of raising. Single-host
+  tools (`get_device_facts`, `run_command(s)`, `push_config`, etc.) return
+  `f"Error ({hostname}): {e}"`; the `_batch` tools return a per-host
+  `f"Error: {exc}"` line labelled separately by hostname; `daily_brief`
+  returns a structured `{"anomalies": [...], "info": {}}` dict instead of a
+  string.
+- Tests use `unittest.mock` (`patch`/`MagicMock`) as the primary approach,
+  plus pytest's `monkeypatch` for a few cache-state tests; pyeapi is mocked
+  at the `eos_mcp.server._connect` / `eos_mcp.eapi.*` boundary.
 - `verify=False` (no TLS cert verification) is the default in
   `get_creds`/`get_node`/`config.ini.example`, matching the TLS-compat shim
   above — both are deliberate, for reaching older EOS devices.

@@ -55,15 +55,19 @@ not this one.
 
 The actual convention here is the opposite of "let exceptions propagate":
 every device-touching tool (`get_device_facts`, `run_command(s)`,
-`push_config`, etc.) wraps the call in `try/except Exception`, calls
+`push_config`, etc.) wraps the call in `try/except Exception` and calls
 `eapi.clear_cache(hostname)` on failure so the next call reconnects instead
-of reusing a possibly-broken cached connection, and returns an
-`f"Error ({hostname}): {e}"` string — it does not re-raise. A new
-device-touching tool that lets an exception propagate instead of following
-this catch/clear-cache/return-string pattern is inconsistent with the rest
-of the file; flag it. `health_check` is the deliberate exception: it never
-touches a device connection at all (verified by
-`test_health_check_does_not_connect`), so it has nothing to clear-cache on.
+of reusing a possibly-broken cached connection — it does not re-raise. The
+error format differs by tool shape: single-host tools return an
+`f"Error ({hostname}): {e}"` string; the `_batch` tools return a per-host
+`f"Error: {exc}"` line labelled separately by hostname; `daily_brief`
+returns a structured `{"anomalies": [...], "info": {}}` dict on failure
+instead of a string. A new device-touching tool that lets an exception
+propagate instead of following the catch/clear-cache pattern for its shape
+is inconsistent with the rest of the file; flag it. `health_check` is the
+deliberate exception: it never touches a device connection at all (verified
+by `test_health_check_does_not_connect`), so it has nothing to clear-cache
+on.
 
 ## 3. Device credentials are the sensitive surface
 
@@ -105,14 +109,16 @@ vague name or a docstring that omits a default a caller would need to know.
 
 ## 5. Test conventions
 
-All tests use `unittest.mock` (`patch`/`MagicMock`); there is no HTTP-layer
-mocking library in this repo — pyeapi is mocked at the `eos_mcp.server._connect`
-/ `eos_mcp.eapi.*` boundary, not at the transport level. A new test that
-reaches for a different mocking approach for the same boundary is
-inconsistent with `tests/test_server.py` and `tests/test_eapi.py`; flag it.
-New device-touching tools need a test for both a successful call and a
-connection/command failure (asserting the `Error (...)` string and, where
-applicable, that `eapi.clear_cache` was invoked).
+Tests use `unittest.mock` (`patch`/`MagicMock`) as the primary approach,
+plus pytest's `monkeypatch` for a few cache-state tests; there is no
+HTTP-layer mocking library in this repo — pyeapi is mocked at the
+`eos_mcp.server._connect` / `eos_mcp.eapi.*` boundary, not at the transport
+level. A new test that reaches for a different mocking approach for the
+same boundary is inconsistent with `tests/test_server.py` and
+`tests/test_eapi.py`; flag it. New device-touching tools need a test for
+both a successful call and a connection/command failure (asserting the
+tool's error output — a string or a dict, depending on tool shape — and,
+where applicable, that `eapi.clear_cache` was invoked).
 
 # Out of scope for review comments
 
