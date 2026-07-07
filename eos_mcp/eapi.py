@@ -39,11 +39,18 @@ _DEFAULT_SINCE_HOURS = 24
 # `show logging last <N> hours` output. Field-verified mnemonics on EOS 4.28:
 # %LINEPROTO-5-UPDOWN, %SPANTREE-6-ROOTCHANGE, %MLAG-4-INTF_INACTIVE_LOCAL,
 # %LAG-5-MEMBER_*.
+# BGP/OSPF ADJCHANGE fire on both up and down transitions; only the down/reset
+# direction is an anomaly, so each is direction-guarded (mirrors junos-mcp's
+# BGP "Established->" filter): BGP requires "old state Established" (session
+# was up and just dropped — a plain new-session establishment never matches
+# this), OSPF requires "to DOWN" (neighbor lost, not a normal FULL formation
+# step). BGP-NOTIFICATION is always a reset and needs no guard.
 _SYSLOG_ALERT_RE = re.compile(
     r"%LINEPROTO-\d+-UPDOWN.*to\s+down"  # interface line protocol went down
     r"|%LINK-\d+-UPDOWN.*down"
-    r"|%BGP-\d+-(ADJCHANGE|NOTIFICATION)"  # BGP session reset / adjacency change
-    r"|%OSPF-\d+-ADJCHANGE"  # OSPF adjacency change
+    r"|%BGP-\d+-ADJCHANGE(?=.*\bold state Established\b)"  # BGP session dropped
+    r"|%BGP-\d+-NOTIFICATION"  # BGP session reset (always a down/reset event)
+    r"|%OSPF-\d+-ADJCHANGE(?=.*\bto DOWN\b)"  # OSPF adjacency lost
     r"|%SPANTREE-\d+-(ROOTCHANGE|TC|TOPOLOGY|PORT_BLOCKED|OVERRIDE)"  # STP topology change
     r"|%LAG-\d+-(MEMBER_REMOVED|INACTIVE)"  # LACP member left the bundle
     r"|%MLAG-[0-4]-"  # MLAG degraded (severity 0-4)
