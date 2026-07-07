@@ -55,9 +55,10 @@ def main() -> None:
             "to AI assistants via eAPI."
         ),
         epilog=(
-            "Config file discovery order: --config_path argument > "
+            "Config file discovery order: "
             f"{cfg_mod.CONFIG_ENV_VAR} env var > ./config.ini > "
-            "~/.config/eos-mcp/config.ini."
+            "~/.config/eos-mcp/config.ini. (Individual tool calls may also "
+            "override the path via a config_path parameter.)"
         ),
     )
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
