@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1](https://github.com/shigechika/eos-mcp/compare/v1.0.0...v1.0.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* correct --help epilog's config discovery order ([#30](https://github.com/shigechika/eos-mcp/issues/30)) ([de32f14](https://github.com/shigechika/eos-mcp/commit/de32f14d10c956b4ab20b3a7e82b5ecf248fe6c6))
+* **daily_brief:** only flag BGP/OSPF ADJCHANGE on down/reset transitions ([#31](https://github.com/shigechika/eos-mcp/issues/31)) ([8b3cf7a](https://github.com/shigechika/eos-mcp/commit/8b3cf7a06d0449efed9a82011752781d513af3c5)), closes [#13](https://github.com/shigechika/eos-mcp/issues/13)
+
 ## [1.0.0](https://github.com/shigechika/eos-mcp/compare/v0.4.1...v1.0.0) (2026-07-07)
 
 
