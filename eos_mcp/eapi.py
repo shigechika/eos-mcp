@@ -203,7 +203,7 @@ def get_config_diff(node: pyeapi.client.Node, rollback_id: int = 1) -> str:
     """
     candidates = [
         f"show rollback config {rollback_id}",
-        f"show running-config diffs",
+        "show running-config diffs",
     ]
     last_err = ""
     for cmd in candidates:
@@ -427,7 +427,7 @@ def check_health(
         env = _get_environment_text(node)
         if env:
             for _prefix in ("System temperature status", "System cooling status"):
-                _sline = next((l.strip() for l in env.splitlines() if l.startswith(_prefix)), None)
+                _sline = next((line.strip() for line in env.splitlines() if line.startswith(_prefix)), None)
                 if _sline is not None and "Ok" not in _sline:
                     anomalies.append(f"CRITICAL: {_sline}")
             for line in env.splitlines():

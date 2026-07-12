@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 
 from eos_mcp.config import (
-    CONFIG_ENV_VAR,
     _XDG_PATH,
+    CONFIG_ENV_VAR,
     find_config_path,
     get_creds,
     get_hosts,
