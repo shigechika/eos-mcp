@@ -58,8 +58,11 @@ of reusing a possibly-broken cached connection — it does not re-raise. The
 error format differs by tool shape: single-host tools return an
 `f"Error ({hostname}): {e}"` string; the `_batch` tools return a per-host
 `f"Error: {exc}"` line labelled separately by hostname; `daily_brief`
-returns a structured `{"anomalies": [...], "info": {}}` dict on failure
-instead of a string. A new device-touching tool that lets an exception
+likewise returns a Markdown **string**, never a dict — the
+`{"anomalies": [...], "info": {}}` shape is the internal per-host result
+(and `check_health`'s return), rendered into the Markdown brief before the
+tool returns, and a config-load failure returns an `f"Error: {e}"` string. A
+new device-touching tool that lets an exception
 propagate instead of following the catch/clear-cache pattern for its shape
 is inconsistent with the rest of the file; flag it. `health_check` is the
 deliberate exception: it never touches a device connection at all (verified
@@ -116,6 +119,31 @@ same boundary is inconsistent with `tests/test_server.py` and
 both a successful call and a connection/command failure (asserting the
 tool's error output — a string or a dict, depending on tool shape — and,
 where applicable, that `eapi.clear_cache` was invoked).
+
+## 6. Two eapi.py invariants that look like simplification targets
+
+Both live only in `eapi.py`'s own docstrings/comments, and a well-meaning
+"cleanup" reintroduces a real bug:
+
+- **Client-side syslog windowing (`_get_syslog_text` / `_window_syslog`,
+  `eapi.py`).** EOS syslog timestamps carry no year, so the code deliberately
+  fetches the **full** buffer and applies a device-clock-anchored, year-aware
+  filter (with a 180-day `wrap_gap` heuristic and RFC3339/traditional format
+  handling) instead of trusting EOS's native `show logging last N hours`. A
+  diff that "simplifies" this to the native last-N-hours form reintroduces the
+  prior-year-leak bug the subsystem exists to fix. The `_SYSLOG_ALERT_RE`
+  BGP/OSPF patterns are **direction-guarded** (only down/reset transitions
+  match) and matches are capped at `_SYSLOG_MAX_MATCHES` (10) per device —
+  dropping a direction guard makes every normal session establishment a
+  WARNING. This is the correctness core of `daily_brief`.
+- **`push_config` session context (`eapi.py`).** All commands — `configure
+  session <name>`, the `config_lines`, `show session-config diffs`, and the
+  `abort`/commit-timer — must be sent in **one** `node.execute()` call to keep
+  the configure-session context, and the diff is extracted **positionally**
+  (`diffs_idx = 1 + len(config_lines)`). A refactor that splits the command
+  list across multiple `execute()` calls, or inserts/reorders a command
+  without updating that index arithmetic, silently breaks the push or reports
+  the wrong output as the diff.
 
 # Out of scope for review comments
 
