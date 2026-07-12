@@ -6,9 +6,8 @@ import argparse
 import os
 import sys
 
-from eos_mcp import __version__
+from eos_mcp import __version__, eapi
 from eos_mcp import config as cfg_mod
-from eos_mcp import eapi
 from eos_mcp.server import _ensure_config, mcp
 
 
@@ -70,7 +69,7 @@ def main() -> None:
     parser.add_argument(
         "--check-host",
         metavar="HOSTNAME",
-        help="Also open an eAPI connection to HOSTNAME (implies --check).", 
+        help="Also open an eAPI connection to HOSTNAME (implies --check).",
     )
     args = parser.parse_args()
 
