@@ -50,8 +50,10 @@ python3 -m venv .venv
   tools (`get_device_facts`, `run_command(s)`, `push_config`, etc.) return
   `f"Error ({hostname}): {e}"`; the `_batch` tools return a per-host
   `f"Error: {exc}"` line labelled separately by hostname; `daily_brief`
-  returns a structured `{"anomalies": [...], "info": {}}` dict instead of a
-  string.
+  likewise returns a **Markdown string** (never a dict) — it assembles the
+  per-host results (each internally an `{"anomalies": [...], "info": {}}`
+  dict) into `"\n".join(lines)`, and returns `f"Error: {e}"` on a
+  config-load failure.
 - Tests use `unittest.mock` (`patch`/`MagicMock`) as the primary approach,
   plus pytest's `monkeypatch` for a few cache-state tests; pyeapi is mocked
   at the `eos_mcp.server._connect` / `eos_mcp.eapi.*` boundary.
