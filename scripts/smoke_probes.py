@@ -35,6 +35,11 @@ from smoke_harness import Caller, Probe, SkipProbe
 #: a device-specific show so the probe stays valid on any inventory.
 SHOW_COMMAND = "show version"
 
+#: A field its output always carries. The tools label the command either way —
+#: "--- show version ---" or "# <host>" appear whether the RPC answered or
+#: failed — so the label proves nothing and the body has to be named.
+SHOW_COMMAND_MARKER = r"(?i)software image version|image version"
+
 #: One worker: the probes below hit a single discovered device, and pinning the
 #: value keeps a scheduled run from inheriting a fan-out sized for an operator
 #: sweeping the estate.
@@ -99,12 +104,15 @@ PROBES: dict[str, Probe] = {
         min_chars=200,
         must_not_match=NO_ERROR,
     ),
+    # The old assertion offered "\\S" as an alternative, which any answer at
+    # all satisfies. The two real answers are named instead, and the sentence
+    # the eAPI layer returns when it could not run either command — which is
+    # not an "Error:" line, so nothing else would have caught it.
     "get_config_diff": Probe(
         args_factory=_first_host,
         args={"rollback_id": 1},
-        # "no diff" is the expected answer on a device nobody is mid-change on.
-        must_match=(r"^\(no diff — running-config matches checkpoint\)|\S",),
-        must_not_match=NO_ERROR,
+        must_match=(r"^\(no diff — running-config matches checkpoint\)|^! Command:|^[-+@]",),
+        must_not_match=(*NO_ERROR, r"^Config diff not available"),
     ),
     "list_config_sessions": Probe(
         args_factory=_first_host,
@@ -128,34 +136,46 @@ PROBES: dict[str, Probe] = {
     "run_commands": Probe(
         args_factory=_first_host,
         args={"commands": [SHOW_COMMAND, "show hostname"]},
-        min_chars=40,
+        # The "--- <command> ---" labels alone are ~44 characters, so a length
+        # bound was satisfied by an entirely empty result.
+        must_match=(rf"^--- {SHOW_COMMAND} ---", SHOW_COMMAND_MARKER),
         must_not_match=NO_ERROR,
     ),
     "run_command_batch": Probe(
         args_factory=_first_host_as_target,
         args={"command": SHOW_COMMAND, "max_workers": MAX_WORKERS},
-        # "# <host>" heads each device's section.
-        must_match=(r"^# \S",),
+        # "# <host>" heads each device's section — and is printed even when
+        # that device answered nothing, hence the second pattern.
+        must_match=(r"^# \S", SHOW_COMMAND_MARKER),
         must_not_match=NO_ERROR,
     ),
     "run_commands_batch": Probe(
         args_factory=_first_host_as_target,
         args={"commands": [SHOW_COMMAND], "max_workers": MAX_WORKERS},
-        must_match=(r"^# \S",),
+        must_match=(r"^# \S", SHOW_COMMAND_MARKER),
         must_not_match=NO_ERROR,
     ),
+    # The header is printed before any device answers, and a per-host failure
+    # is "Error: ..." placed after a padded hostname — mid-line, where the
+    # line-anchored guard cannot see it. Both halves are named here.
     "get_device_facts_batch": Probe(
         args_factory=_first_host_as_target,
         args={"max_workers": MAX_WORKERS},
-        must_match=(r"^Device facts \(\d+ hosts\):",),
-        must_not_match=NO_ERROR,
+        must_match=(r"^Device facts \(\d+ hosts\):", r"EOS \S+\s+serial="),
+        must_not_match=(*NO_ERROR, r"\s+Error: "),
     ),
     # -- morning patrol ------------------------------------------------------
+    # The header is assembled before any device is contacted, and a connection
+    # failure becomes "- CRITICAL: connection failed: ..." inside the host's
+    # section — never an "Error:" line. Requiring the per-host section proves
+    # the brief got that far; refusing that one anomaly separates "this device
+    # has a problem" (a real answer, left to pass) from "the tool could not
+    # reach it at all".
     "daily_brief": Probe(
         args_factory=_first_host_as_target,
         args={"max_workers": MAX_WORKERS, "since_hours": 24},
-        must_match=(r"^## EOS ",),
-        must_not_match=NO_ERROR,
+        must_match=(r"^## EOS ", r"^### \S+ \[(OK|WARNING|CRITICAL)\]"),
+        must_not_match=(*NO_ERROR, r"CRITICAL: connection failed"),
         timeout=600,
     ),
     # -- tools that change a device: never exercised -------------------------
