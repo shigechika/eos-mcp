@@ -120,6 +120,16 @@ both a successful call and a connection/command failure (asserting the
 tool's error output — a string or a dict, depending on tool shape — and,
 where applicable, that `eapi.clear_cache` was invoked).
 
+`tests/test_smoke_probes.py` guards `scripts/smoke_test.py`, which
+exercises every registered tool against real devices. It asserts what can
+be checked without them: every registered tool has a probe spec, no spec
+targets a removed tool, the config-changing tools stay skipped, every
+bounding parameter a tool offers is passed explicitly, and no
+estate-specific literal (device name, address) is written into the specs —
+this repository is public. A new tool therefore needs an entry in
+`scripts/smoke_probes.py` or CI fails; that is deliberate, not an obstacle
+to route around.
+
 ## 6. Two eapi.py invariants that look like simplification targets
 
 Both live only in `eapi.py`'s own docstrings/comments, and a well-meaning
