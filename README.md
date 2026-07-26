@@ -75,6 +75,45 @@ eos-mcp
 | `collect_tech_support` | Collect show tech-support output |
 | `daily_brief` | Health check (environment, errdisabled, uptime, MLAG, recent syslog alerts) across multiple devices |
 
+## Development
+
+### Live smoke test
+
+Unit tests check logic against fixtures; they cannot tell you that a tool has
+stopped returning real data. `scripts/smoke_test.py` runs **every registered
+tool** against the configured devices and fails on empty, malformed or error
+answers:
+
+```bash
+# uses the same inventory file as the server (EOS_MCP_CONFIG)
+uv run python scripts/smoke_test.py
+uv run python scripts/smoke_test.py --only facts --traceback
+```
+
+- **Read-only.** `push_config`, `confirm_config_session` and
+  `abort_config_session` are skipped by name, and a test enforces that.
+  `collect_tech_support` is skipped too — it changes nothing, but it is minutes
+  of device CPU for an answer no assertion would read. The command-running
+  tools are exercised with `show version`: they accept enable-mode commands in
+  general, and a smoke test must not be the thing that types one that matters.
+- **No payloads in the report.** Tool names and statuses only; error text is
+  redacted too, since every error here is prefixed with the device it came from
+  and the payloads are configuration.
+- **Nothing estate-specific in the specs.** The device the per-host tools need
+  is discovered at run time from the configured inventory, and skipped when it
+  is empty. Two tests keep it that way: one refuses those parameters as
+  literals, the other bans anything address-shaped anywhere in the file,
+  because this repository is public.
+- Every probe refuses the `Error (<host>): ...` line these tools return in
+  place of raising — otherwise an unreachable device would read as a
+  successful call.
+- CI enforces the cheap half: a tool registered without a probe spec fails the
+  build (`tests/test_smoke_probes.py`), so adding a tool forces the question
+  "how would we know it works?".
+- `scripts/smoke_harness.py` is the engine and holds no EOS knowledge: it is
+  kept identical across the servers that share it, so fix engine bugs once and
+  sync the file rather than patching this copy.
+
 ## Requirements
 
 - Python >= 3.10
