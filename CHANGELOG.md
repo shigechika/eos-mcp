@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2](https://github.com/shigechika/eos-mcp/compare/v1.1.1...v1.1.2) (2026-07-27)
+
+
+### Bug Fixes
+
+* **ci:** read AI-review guidance from the base revision, drop the checkout ([#65](https://github.com/shigechika/eos-mcp/issues/65)) ([4b63d22](https://github.com/shigechika/eos-mcp/commit/4b63d22266c39d23dd2ac3ec2a0feb541966d7c3))
+* sync the smoke-test engine ([#63](https://github.com/shigechika/eos-mcp/issues/63)) ([1986c7a](https://github.com/shigechika/eos-mcp/commit/1986c7a32fa6f165de43f7c3af6fdeda4252ed2d))
+
 ## [1.1.1](https://github.com/shigechika/eos-mcp/compare/v1.1.0...v1.1.1) (2026-07-26)
 
 
