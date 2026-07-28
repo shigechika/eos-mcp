@@ -17,10 +17,7 @@ from eos_mcp.eapi import (
 # Shared fixtures / helpers
 # ---------------------------------------------------------------------------
 
-_CLEAN_ENV = (
-    "System temperature status  : Ok\n"
-    "System cooling status      : Ok\n"
-)
+_CLEAN_ENV = "System temperature status  : Ok\nSystem cooling status      : Ok\n"
 
 
 def _run_health(
@@ -36,7 +33,7 @@ def _run_health(
         "hostname": "sw1",
         "model": "DCS-7050CX3",
         "version": "4.28.2F",
-        "uptime_seconds": 90000,   # 1d 1h — no uptime warning
+        "uptime_seconds": 90000,  # 1d 1h — no uptime warning
         "memory_total_kb": 4_000_000,
         "memory_free_kb": 2_000_000,  # 50% — no memory warning
     }
@@ -131,9 +128,7 @@ def test_push_config_dry_run_aborts_and_not_committed():
 def test_push_config_live_commit_sets_timer():
     node = MagicMock()
     config_lines = ["hostname sw1"]
-    node.execute.return_value = {
-        "result": [{"output": ""}, {"output": ""}, {"output": ""}, {"output": ""}]
-    }
+    node.execute.return_value = {"result": [{"output": ""}, {"output": ""}, {"output": ""}, {"output": ""}]}
     result = push_config(node, "sess", config_lines, dry_run=False, commit_timer=600)
     assert result["committed"] is True
     assert result["timer_seconds"] == 600
@@ -185,23 +180,17 @@ def test_check_health_uptime_over_1d_no_warning():
 
 
 def test_check_health_memory_critical_at_90_pct():
-    result = _run_health(
-        facts_override={"memory_total_kb": 4_000_000, "memory_free_kb": 400_000}
-    )
+    result = _run_health(facts_override={"memory_total_kb": 4_000_000, "memory_free_kb": 400_000})
     assert any("CRITICAL: memory 90%" in a for a in result["anomalies"])
 
 
 def test_check_health_memory_warning_at_80_pct():
-    result = _run_health(
-        facts_override={"memory_total_kb": 4_000_000, "memory_free_kb": 800_000}
-    )
+    result = _run_health(facts_override={"memory_total_kb": 4_000_000, "memory_free_kb": 800_000})
     assert any("WARNING: memory 80%" in a for a in result["anomalies"])
 
 
 def test_check_health_memory_ok_below_80_pct():
-    result = _run_health(
-        facts_override={"memory_total_kb": 4_000_000, "memory_free_kb": 2_000_000}
-    )
+    result = _run_health(facts_override={"memory_total_kb": 4_000_000, "memory_free_kb": 2_000_000})
     assert not any("memory" in a for a in result["anomalies"])
 
 
@@ -320,20 +309,13 @@ def test_check_health_all_ok_no_anomalies():
 # ---------------------------------------------------------------------------
 
 _SYSLOG_LINK_DOWN = (
-    "Jun 17 18:24:01 sw1 Ebra: %LINEPROTO-5-UPDOWN: Line protocol on Interface "
-    "Ethernet1, changed state to down"
+    "Jun 17 18:24:01 sw1 Ebra: %LINEPROTO-5-UPDOWN: Line protocol on Interface Ethernet1, changed state to down"
 )
 _SYSLOG_LINK_UP = (
-    "Jun 17 18:25:01 sw1 Ebra: %LINEPROTO-5-UPDOWN: Line protocol on Interface "
-    "Ethernet1, changed state to up"
+    "Jun 17 18:25:01 sw1 Ebra: %LINEPROTO-5-UPDOWN: Line protocol on Interface Ethernet1, changed state to up"
 )
-_SYSLOG_MLAG = (
-    "Jun 17 18:24:05 sw1 Mlag: %MLAG-4-INTF_INACTIVE_LOCAL: Local interface "
-    "Port-Channel10 is inactive"
-)
-_SYSLOG_BENIGN = (
-    "Jun 17 18:24:00 sw1 Launcher: %LAUNCHER-6-PROCESS_START: Configuring process"
-)
+_SYSLOG_MLAG = "Jun 17 18:24:05 sw1 Mlag: %MLAG-4-INTF_INACTIVE_LOCAL: Local interface Port-Channel10 is inactive"
+_SYSLOG_BENIGN = "Jun 17 18:24:00 sw1 Launcher: %LAUNCHER-6-PROCESS_START: Configuring process"
 _SYSLOG_BGP_DOWN = (
     "Jun 17 18:24:10 sw1 Bgp: %BGP-5-ADJCHANGE: peer 10.0.0.1 (AS 65001) old "
     "state Established event Stop new state Idle"
@@ -351,8 +333,7 @@ _SYSLOG_OSPF_DOWN = (
     "from FULL to DOWN, Neighbor Down: Dead timer expired"
 )
 _SYSLOG_OSPF_UP = (
-    "Jun 17 18:24:50 sw1 Ospf: %OSPF-5-ADJCHANGE: Nbr 10.0.0.2 on Ethernet1 "
-    "from LOADING to FULL, Loading Done"
+    "Jun 17 18:24:50 sw1 Ospf: %OSPF-5-ADJCHANGE: Nbr 10.0.0.2 on Ethernet1 from LOADING to FULL, Loading Done"
 )
 
 
@@ -436,10 +417,7 @@ def test_get_syslog_text_fetches_full_buffer_and_windows():
         if cmd == "show clock":
             return _SHOW_CLOCK
         if cmd == "show logging":
-            return (
-                "Jun 20 10:00:00 sw1 Ebra: old-out-of-window\n"
-                "Jun 26 15:30:00 sw1 Ebra: recent-in-window"
-            )
+            return "Jun 20 10:00:00 sw1 Ebra: old-out-of-window\nJun 26 15:30:00 sw1 Ebra: recent-in-window"
         raise RuntimeError(f"unexpected {cmd}")
 
     with patch("eos_mcp.eapi.run_show", side_effect=_side):
@@ -537,7 +515,7 @@ def test_window_syslog_tolerates_minor_out_of_order():
     buf = "\n".join(
         [
             "Jun 26 15:05:00 sw1 Ebra: before-ntp-step",  # earlier in buffer, later clock
-            "Jun 26 15:00:30 sw1 Ebra: after-ntp-step",   # NTP stepped back ~4.5 min
+            "Jun 26 15:00:30 sw1 Ebra: after-ntp-step",  # NTP stepped back ~4.5 min
         ]
     )
     out = eapi_mod._window_syslog(buf, now, 24)
@@ -559,7 +537,7 @@ def test_window_syslog_parses_rfc3339():
     now = datetime.datetime(2026, 6, 26, 16, 0, 0)
     buf = "\n".join(
         [
-            "2026-06-20T10:00:00.000000+09:00 sw1 Ebra: rfc3339-old",     # >24h → drop
+            "2026-06-20T10:00:00.000000+09:00 sw1 Ebra: rfc3339-old",  # >24h → drop
             "2026-06-26T15:30:00.123456+09:00 sw1 Ebra: rfc3339-recent",  # 30m → keep
         ]
     )
@@ -595,10 +573,10 @@ def test_window_syslog_mixed_formats():
     now = datetime.datetime(2026, 6, 26, 16, 0, 0)
     buf = "\n".join(
         [
-            "Jun 20 10:00:00 2026 sw1 Ebra: trad-year-old",              # explicit 2026, >24h → drop
-            "Jun 26 15:30:00 sw1 Ebra: yearless-recent",                 # reconstruct 2026 → keep
-            "Jun 26 15:45:00 2026 sw1 Ebra: trad-year-recent",           # explicit 2026 → keep
-            "2026-06-26T15:50:00+09:00 sw1 Ebra: rfc3339-recent",        # RFC3339 → keep
+            "Jun 20 10:00:00 2026 sw1 Ebra: trad-year-old",  # explicit 2026, >24h → drop
+            "Jun 26 15:30:00 sw1 Ebra: yearless-recent",  # reconstruct 2026 → keep
+            "Jun 26 15:45:00 2026 sw1 Ebra: trad-year-recent",  # explicit 2026 → keep
+            "2026-06-26T15:50:00+09:00 sw1 Ebra: rfc3339-recent",  # RFC3339 → keep
         ]
     )
     out = eapi_mod._window_syslog(buf, now, 24)
@@ -613,7 +591,7 @@ def test_window_syslog_numeric_hostname_not_misread_as_year():
     now = datetime.datetime(2026, 6, 26, 16, 0, 0)
     buf = "\n".join(
         [
-            "Jun 20 10:00:00 7280r3 Ebra: numeric-host-old",     # >24h; hostname starts 7280
+            "Jun 20 10:00:00 7280r3 Ebra: numeric-host-old",  # >24h; hostname starts 7280
             "Jun 26 15:30:00 7280r3 Ebra: numeric-host-recent",
         ]
     )

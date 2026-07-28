@@ -15,7 +15,8 @@ python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 .venv/bin/pytest -v                     # all tests
 .venv/bin/pytest -v tests/test_eapi.py  # eapi helpers only
-.venv/bin/ruff check .                  # lint (not run in CI; local only)
+.venv/bin/ruff check .                  # lint (gated in CI)
+.venv/bin/ruff format --check .         # format (gated in CI)
 ```
 
 ## Architecture
