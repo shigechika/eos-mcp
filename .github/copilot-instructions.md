@@ -21,9 +21,10 @@ python3 -m venv .venv
 
 This mirrors `.github/workflows/test.yml` (`pip install -e ".[dev]"` +
 `pytest tests/ -v`, matrix over Python 3.10/3.12/3.13/3.14 on Ubuntu plus
-one `windows-latest` job on 3.12). `ruff` is configured in `pyproject.toml`
-but there is no lint job in CI — don't invent style nits it would catch,
-since it doesn't run here.
+one `windows-latest` job on 3.12), plus a `lint` job running `ruff check .`
+and `ruff format --check .` at the pinned version. Style nits those two would
+catch are already enforced, so flagging them adds nothing — but a change that
+would fail them is worth raising.
 
 # What to focus review on in this repo
 
