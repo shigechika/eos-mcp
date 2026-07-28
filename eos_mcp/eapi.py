@@ -100,10 +100,7 @@ def run_show(node: pyeapi.client.Node, command: str) -> str:
 def run_shows(node: pyeapi.client.Node, commands: list[str]) -> str:
     """Run multiple show commands and return labelled concatenated text."""
     result = node.execute(commands, encoding="text")
-    parts = [
-        f"--- {cmd} ---\n{result['result'][i].get('output', '')}"
-        for i, cmd in enumerate(commands)
-    ]
+    parts = [f"--- {cmd} ---\n{result['result'][i].get('output', '')}" for i, cmd in enumerate(commands)]
     return "\n".join(parts)
 
 
@@ -134,11 +131,7 @@ def push_config(
     Returns dict: {session_name, diffs, committed, timer_seconds}.
     """
     terminate = "abort" if dry_run else f"commit timer {_timer_str(commit_timer)}"
-    cmds = (
-        [f"configure session {session_name}"]
-        + list(config_lines)
-        + ["show session-config diffs", terminate]
-    )
+    cmds = [f"configure session {session_name}"] + list(config_lines) + ["show session-config diffs", terminate]
     result = node.execute(cmds, encoding="text")
     diffs_idx = 1 + len(config_lines)
     diffs = result["result"][diffs_idx].get("output", "(no diffs)")
@@ -261,16 +254,18 @@ def _device_now(node: pyeapi.client.Node) -> datetime.datetime:
     try:
         out = run_show(node, "show clock")
         # e.g. "Fri Jun 26 16:01:37 2026  Timezone: Japan ..."
-        m = re.search(
-            r"\b([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})\b", out
-        )
+        m = re.search(r"\b([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})\b", out)
         # Use the same locale-independent month map as the syslog parser rather
         # than strptime("%b"), whose month names are locale-dependent.
         mon = _MONTHS.get(m.group(1)) if m else None
         if mon:
             return datetime.datetime(
-                int(m.group(6)), mon, int(m.group(2)),
-                int(m.group(3)), int(m.group(4)), int(m.group(5)),
+                int(m.group(6)),
+                mon,
+                int(m.group(2)),
+                int(m.group(3)),
+                int(m.group(4)),
+                int(m.group(5)),
             )
     except Exception:
         pass
@@ -280,9 +275,7 @@ def _device_now(node: pyeapi.client.Node) -> datetime.datetime:
     return datetime.datetime.now()
 
 
-def _window_syslog(
-    text: str, device_now: datetime.datetime, since_hours: int
-) -> str:
+def _window_syslog(text: str, device_now: datetime.datetime, since_hours: int) -> str:
     """Keep only syslog lines within the last ``since_hours`` of ``device_now``.
 
     Handles every EOS ``logging format timestamp`` rendering:
@@ -372,9 +365,7 @@ def _get_syslog_text(node: pyeapi.client.Node, since_hours: int) -> str:
     return ""
 
 
-def check_health(
-    node: pyeapi.client.Node, since_hours: int = _DEFAULT_SINCE_HOURS
-) -> dict[str, Any]:
+def check_health(node: pyeapi.client.Node, since_hours: int = _DEFAULT_SINCE_HOURS) -> dict[str, Any]:
     """Run health checks for daily_brief.
 
     Checks: device facts (uptime, memory), environment (temperature/cooling/fans/PSUs),
@@ -412,13 +403,9 @@ def check_health(
             used_pct = (total_kb - free_kb) / total_kb * 100
             info["memory_pct"] = round(used_pct, 1)
             if used_pct >= 90:
-                anomalies.append(
-                    f"CRITICAL: memory {used_pct:.0f}% used ({free_kb // 1024} MB free)"
-                )
+                anomalies.append(f"CRITICAL: memory {used_pct:.0f}% used ({free_kb // 1024} MB free)")
             elif used_pct >= 80:
-                anomalies.append(
-                    f"WARNING: memory {used_pct:.0f}% used ({free_kb // 1024} MB free)"
-                )
+                anomalies.append(f"WARNING: memory {used_pct:.0f}% used ({free_kb // 1024} MB free)")
     except Exception as exc:
         anomalies.append(f"CRITICAL: cannot fetch facts: {exc}")
 
@@ -444,11 +431,7 @@ def check_health(
     # Errdisabled interfaces
     try:
         intf_text = run_show(node, "show interfaces status")
-        errdisabled = [
-            line.split()[0]
-            for line in intf_text.splitlines()
-            if "errdisabled" in line and line.strip()
-        ]
+        errdisabled = [line.split()[0] for line in intf_text.splitlines() if "errdisabled" in line and line.strip()]
         info["errdisabled"] = errdisabled
         if errdisabled:
             anomalies.append(f"WARNING: errdisabled: {', '.join(errdisabled)}")
@@ -489,9 +472,7 @@ def check_health(
         count = 0
         for line in syslog.splitlines():
             if count >= _SYSLOG_MAX_MATCHES:
-                anomalies.append(
-                    f"WARNING: syslog: ... ({count}+ alert lines, truncated)"
-                )
+                anomalies.append(f"WARNING: syslog: ... ({count}+ alert lines, truncated)")
                 break
             if _SYSLOG_ALERT_RE.search(line):
                 anomalies.append(f"WARNING: syslog: {line.strip()[:120]}")
