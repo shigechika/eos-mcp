@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3](https://github.com/shigechika/eos-mcp/compare/v1.1.2...v1.1.3) (2026-07-31)
+
+
+### Bug Fixes
+
+* **deps:** cap the MCP SDK below v2 ([#68](https://github.com/shigechika/eos-mcp/issues/68)) ([f822c04](https://github.com/shigechika/eos-mcp/commit/f822c04c5b0d670d401184c1ab8c95e970ca03e9))
+
 ## [1.1.2](https://github.com/shigechika/eos-mcp/compare/v1.1.1...v1.1.2) (2026-07-27)
 
 
