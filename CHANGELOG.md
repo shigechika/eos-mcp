@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4](https://github.com/shigechika/eos-mcp/compare/v1.1.3...v1.1.4) (2026-08-06)
+
+
+### Bug Fixes
+
+* **deps:** ignore mcp major version updates in Dependabot ([#72](https://github.com/shigechika/eos-mcp/issues/72)) ([70d6052](https://github.com/shigechika/eos-mcp/commit/70d6052facde5fafeda095c5432a0a8cff7d508a))
+
 ## [1.1.3](https://github.com/shigechika/eos-mcp/compare/v1.1.2...v1.1.3) (2026-07-31)
 
 
