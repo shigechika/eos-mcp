@@ -2,6 +2,8 @@
 
 # eos-mcp
 
+English | [日本語](README.ja.md)
+
 MCP server for Arista EOS device operations via eAPI.
 
 Exposes EOS show commands, running-config retrieval, configuration push
