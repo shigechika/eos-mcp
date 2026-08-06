@@ -1,5 +1,7 @@
 # eos-mcp
 
+[English](README.md) | 日本語
+
 Arista EOS 機器を eAPI 経由で操作する MCP サーバ。
 
 show コマンド実行、running-config 取得、configure session を使った設定投入（コミットタイマー付き）、tech-support 収集などを MCP 対応 AI アシスタントに提供します。
