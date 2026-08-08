@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/shigechika/eos-mcp/compare/v1.1.4...v1.2.0) (2026-08-08)
+
+
+### Features
+
+* add pr-gate.yml admission control caller ([#76](https://github.com/shigechika/eos-mcp/issues/76)) ([d5da644](https://github.com/shigechika/eos-mcp/commit/d5da644f019ae2cd6d502627d8a3e3e771daa6ee))
+
 ## [1.1.4](https://github.com/shigechika/eos-mcp/compare/v1.1.3...v1.1.4) (2026-08-06)
 
 
