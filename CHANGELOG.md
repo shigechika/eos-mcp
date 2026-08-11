@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1](https://github.com/shigechika/eos-mcp/compare/v1.2.0...v1.2.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* add explicit workflow permissions to test.yml and release.yml ([#78](https://github.com/shigechika/eos-mcp/issues/78)) ([bc0e875](https://github.com/shigechika/eos-mcp/commit/bc0e87554547f7a7cf0bd6d41f5062f776e2a622))
+
 ## [1.2.0](https://github.com/shigechika/eos-mcp/compare/v1.1.4...v1.2.0) (2026-08-08)
 
 
