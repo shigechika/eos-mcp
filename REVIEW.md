@@ -20,15 +20,21 @@ reviewer also receives.
   `push_config`'s `dry_run=True` default and the commit-timer plus
   explicit `confirm_config_session` / `abort_config_session` step
   rather than routing around them.
-- **"Simplifying" the client-side syslog windowing (§6).** EOS syslog
-  timestamps carry no year, so `_get_syslog_text` / `_window_syslog`
-  fetch the full buffer and apply a device-clock-anchored, year-aware
-  filter on purpose. Replacing that with EOS's native `show logging
-  last N hours` reintroduces the prior-year-leak bug the subsystem
-  exists to fix. Dropping a direction guard from `_SYSLOG_ALERT_RE`, or
-  the `_SYSLOG_MAX_MATCHES` cap, belongs here too: without the guard
-  every normal BGP or OSPF session establishment becomes a WARNING.
-  This is the correctness core of `daily_brief`.
+- **Demoting the full-buffer syslog path from primary to default
+  (§6).** EOS syslog timestamps carry no year, so `_get_syslog_text` /
+  `_window_syslog` fetch the full buffer *first* and apply a
+  device-clock-anchored, year-aware filter; making EOS's native `show
+  logging last N hours` the primary path reintroduces the
+  prior-year-leak bug the subsystem exists to fix. Note this is about
+  the ordering, not the native form itself: the existing chain
+  deliberately falls back from the full buffer to the native window and
+  then to empty when a fetch is *rejected*
+  (`test_get_syslog_text_falls_back_to_native_window` pins it), and
+  that fallback is correct, not a finding.
+- **Dropping a direction guard from `_SYSLOG_ALERT_RE`, or the
+  `_SYSLOG_MAX_MATCHES` cap (§6).** Without the guard every normal BGP
+  or OSPF session establishment becomes a WARNING. This is the
+  correctness core of `daily_brief`.
 - **Breaking `push_config`'s single-`execute()` session context (§6).**
   `configure session <name>`, the `config_lines`, `show session-config
   diffs` and the `abort`/commit-timer must go in **one**
@@ -75,15 +81,22 @@ reviewer also receives.
 - Command injection via the eAPI call path. `eapi.py` hands each
   command to pyeapi as a discrete list element (`node.execute([...])`);
   there is no string concatenation or shell construction, so this is
-  not that class of surface. The real risk is the arbitrary-execution
-  design itself, which the rails above cover.
-- Anything CI already fails on, restated as a review comment. `ruff
-  check .` and `ruff format --check .` both gate this repository at a
-  pinned version, and `tests/test_smoke_probes.py` already fails the
-  build for a registered tool with no probe spec. This does **not**
-  extend to that file's estate-specific-literal assertion — a device
-  name or address leaking into a public repository is worth catching
-  twice.
+  not that class of surface.
+- `run_command(s)` accepting an arbitrary EOS command with no
+  allow-list. That is the tool's stated purpose, and it has no rails —
+  do not describe it as guarded, because it is not. This suppression
+  covers the existing design only: a **new** tool or code path that
+  widens what can be executed, or that reaches a config-changing
+  command without the `push_config` rails above, is still blocking.
+- A finding that does nothing but restate one of the two gates CI
+  already enforces: `ruff check .` and `ruff format --check .` both gate this
+  repository at a pinned version, and `tests/test_smoke_probes.py`
+  already fails the build for a registered tool with no probe spec.
+  This covers those two and nothing further. It never applies to a
+  rule listed under **Always blocking** above, even when the same
+  diff happens to fail a test as well, and it does not cover that
+  same file's estate-specific-literal assertion — a device name or address
+  reaching a public repository is worth catching twice.
 - Suggestions to *replace* `release-please.yml`'s
   `secrets.RELEASE_PLEASE_TOKEN` with `GITHUB_TOKEN`. Preferring the
   dedicated token is deliberate and explained in that workflow's own
