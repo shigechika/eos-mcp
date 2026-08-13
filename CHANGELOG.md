@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2](https://github.com/shigechika/eos-mcp/compare/v1.2.1...v1.2.2) (2026-08-13)
+
+
+### Bug Fixes
+
+* bump cryptography to 50.0.0 (Dependabot high-severity alert) ([#80](https://github.com/shigechika/eos-mcp/issues/80)) ([d834fd5](https://github.com/shigechika/eos-mcp/commit/d834fd5bcf5a5ede53addb9b111ebc75faaea539))
+
 ## [1.2.1](https://github.com/shigechika/eos-mcp/compare/v1.2.0...v1.2.1) (2026-08-11)
 
 
