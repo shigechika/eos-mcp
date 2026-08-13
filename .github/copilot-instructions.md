@@ -158,8 +158,10 @@ Both live only in `eapi.py`'s own docstrings/comments, and a well-meaning
 
 # Out of scope for review comments
 
-- Formatting/style nits: there is no `ruff`/`black`/`mypy` step in CI, so
-  don't hold this repo to a style standard it hasn't opted into.
+- Formatting/style nits: CI gates `ruff check .` and `ruff format --check .`
+  at a pinned version (see "Build & validate" above), so don't restate what
+  those two already enforce. There is no `black` or `mypy` step, so don't
+  hold this repo to a typing standard it hasn't opted into either.
 - `release-please.yml`'s use of `secrets.RELEASE_PLEASE_TOKEN` (falling back
   to `GITHUB_TOKEN`) is intentional and documented in the workflow's own
   comment (`GITHUB_TOKEN`-authored tags/releases don't trigger downstream
