@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "eos-mcp": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["eos-mcp"],
+      "env": {
+        "EOS_MCP_CONFIG": "${EOS_MCP_CONFIG:-}"
+      }
+    }
+  }
+}

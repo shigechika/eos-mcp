@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "eos-mcp",
+  "displayName": "eos-mcp",
+  "description": "Arista EOS device operations for Claude Code, via eAPI. Run show commands, retrieve and diff running-config, push config through a guarded configure-session with a commit timer, collect tech-support, and get a one-shot daily_brief fleet health check. Needs a local config.ini file (per-device eAPI username/password) — the server's only credential mechanism — already present at EOS_MCP_CONFIG or ~/.config/eos-mcp/config.ini; the plugin cannot create or supply that file for you, so every tool but health_check's config-status probe fails until it exists.",
+  "author": {
+    "name": "AIKAWA Shigechika",
+    "url": "https://github.com/shigechika"
+  },
+  "homepage": "https://shigechika.github.io/eos-mcp/",
+  "repository": "https://github.com/shigechika/eos-mcp",
+  "license": "Apache-2.0",
+  "keywords": [
+    "arista",
+    "eos",
+    "eapi",
+    "network-automation",
+    "networking",
+    "infrastructure"
+  ]
+}
