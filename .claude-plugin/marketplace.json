@@ -1,0 +1,17 @@
+{
+  "name": "eos-mcp",
+  "description": "eos-mcp server, packaged as a Claude Code plugin.",
+  "owner": {
+    "name": "AIKAWA Shigechika",
+    "url": "https://github.com/shigechika"
+  },
+  "plugins": [
+    {
+      "name": "eos-mcp",
+      "source": "./plugin",
+      "description": "Arista EOS device operations for Claude Code, via eAPI. Run show commands, retrieve and diff running-config, push config through a guarded configure-session with a commit timer, collect tech-support, and get a one-shot daily_brief fleet health check. Needs a local config.ini file (per-device eAPI username/password) already present on the machine; the plugin cannot create or supply that file for you.",
+      "category": "networking",
+      "homepage": "https://shigechika.github.io/eos-mcp/"
+    }
+  ]
+}

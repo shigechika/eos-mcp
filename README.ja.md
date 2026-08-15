@@ -6,6 +6,8 @@ Arista EOS 機器を eAPI 経由で操作する MCP サーバ。
 
 show コマンド実行、running-config 取得、configure session を使った設定投入（コミットタイマー付き）、tech-support 収集などを MCP 対応 AI アシスタントに提供します。
 
+ドキュメント: <https://shigechika.github.io/eos-mcp/ja/>
+
 ## インストール
 
 ```bash
@@ -38,6 +40,51 @@ tags = main,dc1
 （個々のMCPツール呼び出しでは、`config_path`パラメータでパスを上書きすることも可能）
 
 ## 使い方
+
+### Claude Code（プラグイン）
+
+このリポジトリはプラグイン 1 個のマーケットプレイスも兼ねているので、Claude Code から
+そのまま導入できる:
+
+```
+/plugin marketplace add shigechika/eos-mcp
+/plugin install eos-mcp@eos-mcp
+```
+
+プラグインは `uvx eos-mcp` を起動し、[設定](#設定)に書いたのと同じ `EOS_MCP_CONFIG`
+を読む。未設定のままなら通常の探索順（`./config.ini` → `~/.config/eos-mcp/config.ini`）
+にそのままフォールスルーする。`/plugin install` はサーバプロセスの配線だけを行うもので、
+`config.ini` ファイルやそこに書く機器ごとの eAPI 認証情報までは作ってくれない——プラグ
+インを動かすマシン上に、あらかじめそのファイルが存在している必要がある（無ければ
+`health_check` 以外のツールはすべて失敗する）。
+
+プラグインは `uvx` を起動するため、Claude Code を実行するプロセスの `PATH` に
+`uvx` が通っている必要がある。ログインシェルなら通常問題ないが、GUI から起動した
+場合は通っていないことがある。プラグインが起動しない場合は
+[uv](https://docs.astral.sh/uv/) をシステム全体にインストールすること。
+
+### Claude Code（手動）
+
+`.mcp.json` に追加:
+
+```json
+{
+  "mcpServers": {
+    "eos-mcp": {
+      "type": "stdio",
+      "command": "eos-mcp"
+    }
+  }
+}
+```
+
+`config.ini` が上記の既定の探索先に無い場合のみ `"env": { "EOS_MCP_CONFIG": "..." }` を追加する。
+
+### Claude Desktop
+
+`claude_desktop_config.json` に同じ設定を追加する。
+
+### シェルから直接
 
 ```bash
 # 設定確認と機器一覧表示
@@ -88,6 +135,10 @@ EOS 4.28.x と Python 3.14 の組み合わせで `SSLV3_ALERT_HANDSHAKE_FAILURE`
 - **dry_run モード**（デフォルト）: `configure session` を作成して差分を確認するだけで、commit しません
 - **コミットタイマー**: 実投入時は `commit timer` でタイムアウトを設定。`confirm_config_session` で確定するまで自動ロールバック
 - **セッション管理**: `list_config_sessions` で現在のセッション状態を確認、`abort_config_session` でいつでも中断可能
+
+これら 3 つ（`push_config`・`confirm_config_session`・`abort_config_session`）を実際に許可しているのは、`config.ini` に書いた eAPI アカウント自身の EOS 権限レベルである。`configure session` モードに入れる権限（実質的に privilege 15 / enable アクセス）が無ければ、これらは EOS 側の API で失敗するだけで書き込まれず、その機器に対する読み取り専用ツールはすべて動き続ける。対象機器のアカウントを show 専用の低権限にしておけば、それがそのまま実効的な安全境界になる。
+
+**`run_command`・`run_commands`・`run_command_batch`・`run_commands_batch` は、コマンド実行系として案内されているものの `show ...` 系コマンドに制限されていない。** サーバー側はコマンド文字列を検証もホワイトリスト化もせずそのまま eAPI Command API へ渡すため、これらのツールは `configure terminal ...` や `reload` を含む任意の enable モードコマンドを、設定済みの任意の機器（単体、または `_batch` 系なら `tags` でフリート全体）に対して実行できる。ゲートしているのは `push_config` と同じ EOS アカウント権限だが、`push_config` が持つ dry_run / commit timer のような安全機構は無い——機器の `config.ini` アカウントにどこまでの権限を持たせるかを判断するうえで覚えておく価値がある、事実上の第二の書き込み経路である。
 
 ## 開発
 
