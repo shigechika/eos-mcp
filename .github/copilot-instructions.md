@@ -3,7 +3,7 @@
 `eos-mcp` is an MCP (Model Context Protocol) server exposing Arista EOS
 device operations (show commands, config retrieval/push, tech-support
 collection, a daily health-check brief) to AI assistants over **eAPI**
-(via `pyeapi`). Built on the official `mcp` Python SDK's `FastMCP`
+(via `pyeapi`). Built on the official `mcp` Python SDK's `MCPServer`
 (`eos_mcp/server.py`), with `eos_mcp/eapi.py` wrapping `pyeapi` connections
 and `eos_mcp/config.py` loading device inventory/credentials from
 `config.ini`.
@@ -43,10 +43,10 @@ The rule for new code: any `print()` or unconfigured logging added to a tool
 handler, `eapi.py`, or anywhere on the path `mcp.run()` executes would
 corrupt the stdio JSON-RPC stream and must go to stderr instead.
 
-## 2. FastMCP already wraps tool returns — don't ask for manual envelope code
+## 2. MCPServer already wraps tool returns — don't ask for manual envelope code
 
 `server.py`'s `@mcp.tool()`-decorated functions return plain strings/dicts;
-FastMCP handles the MCP content-envelope wrapping. Do **not** suggest a tool
+MCPServer handles the MCP content-envelope wrapping. Do **not** suggest a tool
 manually construct `{"content": [...], "isError": ...}` — that pattern is
 relevant to other, lower-level (hand-rolled stdio) servers in this family,
 not this one.

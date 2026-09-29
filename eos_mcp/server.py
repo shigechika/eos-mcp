@@ -11,12 +11,12 @@ import concurrent.futures
 import datetime
 import os
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
+from eos_mcp import __version__, eapi
 from eos_mcp import config as cfg_mod
-from eos_mcp import eapi
 
-mcp = FastMCP("eos-mcp")
+mcp = MCPServer("eos-mcp", version=__version__)
 
 
 def _config_path(override: str) -> str:
@@ -66,7 +66,6 @@ def health_check(config_path: str = "") -> dict:
     ``config`` (ok / error / missing). On a degraded or error result, ``detail``
     carries the reason.
     """
-    from eos_mcp import __version__
 
     # Fixed shape: every key is present regardless of outcome, so callers can
     # read it uniformly and rely on `status` to judge health.
