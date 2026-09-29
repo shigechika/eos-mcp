@@ -21,7 +21,7 @@ python3 -m venv .venv
 
 ## Architecture
 
-- `eos_mcp/server.py` — `FastMCP("eos-mcp")` with tools: `health_check`,
+- `eos_mcp/server.py` — `MCPServer("eos-mcp")` with tools: `health_check`,
   `get_router_list`, `get_device_facts`(`_batch`), `get_version`,
   `get_config`, `get_config_diff`, `run_command(s)`(`_batch`),
   `push_config`, `confirm_config_session`, `abort_config_session`,
