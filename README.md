@@ -116,6 +116,18 @@ of the default discovery locations above.
 
 Add the same entry to `claude_desktop_config.json`.
 
+### Codex
+
+```bash
+codex mcp add eos-mcp -- eos-mcp
+```
+
+Add `--env EOS_MCP_CONFIG=...` (before `--`) only if `config.ini` is not at
+one of the default discovery locations above.
+
+Any other MCP client that launches stdio servers works the same way: give it
+`eos-mcp` as the command.
+
 ### From a shell
 
 ```bash
