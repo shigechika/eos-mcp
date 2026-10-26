@@ -94,6 +94,16 @@ eos-mcp --check --check-host switch1.example.com
 
 `claude_desktop_config.json` に同じ設定を追加する。
 
+### Codex
+
+```bash
+codex mcp add eos-mcp -- eos-mcp
+```
+
+`config.ini` が上記の既定の探索先に無い場合のみ、`--` の前に `--env EOS_MCP_CONFIG=...` を追加する。
+
+stdio サーバーを起動できる MCP クライアントなら、どれでも同じ形で使える。コマンドに `eos-mcp` を指定すればよい。
+
 ### 直接実行
 
 ```bash
