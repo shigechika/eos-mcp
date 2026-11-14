@@ -204,7 +204,7 @@ uv run python scripts/smoke_test.py --only facts --traceback
 
 ## Requirements
 
-- Python >= 3.10
+- Python >= 3.11
 - Arista EOS with eAPI enabled (`management api http-commands`)
 - Network access to port 443 (HTTPS) on target devices
 

@@ -130,7 +130,7 @@ eos-mcp
 
 ## 要件
 
-- Python >= 3.10
+- Python >= 3.11
 - Arista EOS（eAPI 有効化済み: `management api http-commands`）
 - 対象機器のポート 443（HTTPS）への到達性
 
