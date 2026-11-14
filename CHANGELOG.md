@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0](https://github.com/shigechika/eos-mcp/compare/v1.4.0...v1.5.0) (2026-11-14)
+
+
+### Features
+
+* drop Python 3.10 (EOL) and add Python 3.15 support ([#99](https://github.com/shigechika/eos-mcp/issues/99)) ([215a29b](https://github.com/shigechika/eos-mcp/commit/215a29b97312a84bfa7d9135582b9856404a477a))
+
 ## [1.4.0](https://github.com/shigechika/eos-mcp/compare/v1.3.0...v1.4.0) (2026-09-29)
 
 
